@@ -88,7 +88,8 @@ h1.title{font-family:var(--sans);font-weight:800;font-size:clamp(38px,7vw,76px);
 .sech h2{font-family:var(--sans);font-weight:800;font-size:clamp(28px,4vw,40px);text-transform:uppercase;letter-spacing:.02em;line-height:1;margin:0 0 6px}
 .sech p{margin:0;max-width:640px;font-size:13px;line-height:1.6;color:var(--faint)}
 /* generator cards: wide, tool-like */
-.gens{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.gens{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+@media(max-width:1100px) and (min-width:961px){.gens{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .gencard{display:flex;flex-direction:column;text-decoration:none;border:1.5px solid var(--red);background:var(--boxbg);transition:transform .15s,box-shadow .15s}
 .gencard:hover,.gencard:focus-visible{transform:translate(-3px,-3px);box-shadow:5px 5px 0 var(--red)}
 .gprev{border-bottom:1px solid var(--line);background:var(--hoverbg)}

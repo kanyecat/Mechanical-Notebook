@@ -29,6 +29,7 @@ const nav = (p, here) => `<a class="skip" href="#app">Skip to content</a>
         <a href="${p}generators/gears.html"><b>Gear generator</b><span>Spur, ring and rack gears, gear trains</span></a>
         <a href="${p}generators/linkages.html"><b>Linkage generator</b><span>Four-bar, slider crank, multi-link</span></a>
         <a href="${p}generators/cams.html"><b>Cam generator</b><span>Motion programs, followers, checks</span></a>
+        <a href="${p}generators/pulleys.html"><b>Pulley generator</b><span>Belt drives, idlers, lifting tackle</span></a>
       </div></div>
     <a href="${p}about.html"${here === 'a' ? ' aria-current="page"' : ''}>About</a>
   </nav>
@@ -42,7 +43,7 @@ const foot = p => `<footer class="foot"><div class="footin">
     <p class="fsmall">Made by Joo Hee Kim · <a href="${p}about.html">About this site</a></p></div>
   <div class="fcol"><h4>Explore</h4>
     <a href="${p}index.html#mechanisms">Mechanisms</a><a href="${p}index.html#elements">Mechanical elements</a>
-    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a></div>
+    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a></div>
   <div class="fcol"><h4>Project</h4>
     <a href="${REPO}" rel="noopener">Source code on GitHub</a><span>Free and open source (MIT licence)</span>
     <span>Inspired by <i>507 Mechanical Movements</i> by Henry T. Brown (1868)</span><span>Visits are counted with Google Analytics</span></div>
@@ -66,7 +67,8 @@ elems.forEach(s => detail(s, 'elements', 'elements', 'e'));
 const gens = [
   ['gears', 'spur-gears', 'Gear generator', 'Spur gears, ring gears and racks with true involute teeth. Connect as many gears as you like into a train and watch them turn.'],
   ['linkages', 'four-bar', 'Linkage generator', 'Four-bar and slider-crank linkages, or build your own multi-link mechanism and trace the path of any point.'],
-  ['cams', 'cam-follower', 'Cam generator', 'Program a motion step by step, choose a follower, and check the pressure angle and undercut before you cut.']
+  ['cams', 'cam-follower', 'Cam generator', 'Program a motion step by step, choose a follower, and check the pressure angle and undercut before you cut.'],
+  ['pulleys', 'belt-pulleys', 'Pulley generator', 'Place pulleys anywhere, join them with belts and hang loads on them, or rig a block and tackle. See speeds, grip and whether it can lift.']
 ];
 fs.writeFileSync(R('index.html'), head('Mechanical Notebook: how machines move, and the math behind them', '', null, '') + nav('', 'h') + `
 <main class="sheet home" id="app">
@@ -78,7 +80,7 @@ fs.writeFileSync(R('index.html'), head('Mechanical Notebook: how machines move, 
       <div class="cta"><a class="btn" href="#mechanisms">Browse mechanisms</a><a class="btn ghost" href="#generators">Design with a generator</a></div>
     </div>
     <nav class="toc" aria-label="Contents"><div class="toch">Contents</div><ol>
-      <li><a href="#generators"><span class="tn">01</span><span class="tt">Generators<small>Design and export parts</small></span><span class="tc">3</span></a></li>
+      <li><a href="#generators"><span class="tn">01</span><span class="tt">Generators<small>Design and export parts</small></span><span class="tc">${gens.length}</span></a></li>
       <li><a href="#mechanisms"><span class="tn">02</span><span class="tt">Mechanisms<small>How motion is changed</small></span><span class="tc">${mech.length}</span></a></li>
       <li><a href="#elements"><span class="tn">03</span><span class="tt">Mechanical elements<small>The parts that hold machines together</small></span><span class="tc">${elems.length}</span></a></li>
       <li><a href="about.html"><span class="tn">04</span><span class="tt">About<small>Who made this and why</small></span><span class="tc">→</span></a></li>
@@ -91,7 +93,7 @@ fs.writeFileSync(R('index.html'), head('Mechanical Notebook: how machines move, 
       <a class="gencard" href="generators/${id}.html"><div class="gprev"><canvas data-s="${s}" data-live data-box aria-hidden="true"></canvas></div>
         <div class="gtext"><h3>${t}</h3><p>${d}</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the ${t.split(' ')[0].toLowerCase()} generator →</span></div></a>`).join('')}
     </div>
-    <p class="soonline">More generators (springs, belts and pulleys, Geneva drives) are on the way.</p>
+    <p class="soonline">More generators (springs, Geneva drives, chains and sprockets) are on the way.</p>
   </section>
 
   <section id="mechanisms" class="sec">

@@ -180,7 +180,7 @@
 
   /* ---------- page mount ---------- */
   // mechanisms that have a generator page, with starting settings
-  const MAKE = { 'spur-gears': ['gears'], 'rack-pinion': ['gears', { type: 'rack' }], 'four-bar': ['linkages'], 'slider-crank': ['linkages', { kind: 'slider' }], 'cam-follower': ['cams'] };
+  const MAKE = { 'spur-gears': ['gears'], 'rack-pinion': ['gears', { type: 'rack' }], 'four-bar': ['linkages'], 'slider-crank': ['linkages', { kind: 'slider' }], 'cam-follower': ['cams'], 'belt-pulleys': ['pulleys'], 'timing-belt': ['pulleys', { btype: 'timing' }] };
   MM.elementsCat = () => (window.MM_ELEMENTS || []).filter(c => MM.registry[c.slug]);
   MM.mount = function (slug) {
     const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug);
@@ -217,7 +217,7 @@
         <div class="box now"><h3>Right now</h3><div id="ro">&nbsp;</div></div>
         <div class="box notes"><h3>How it works</h3><ol>${meta.notes.map(n => `<li>${n.replace(/^(Good to know|Try it):/, '<b>$1:</b>')}</li>`).join('')}</ol></div>
         <div class="box used"><h3>Application</h3><ul>${apps.map(x => `<li>${x}</li>`).join('')}</ul></div>
-        ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
+        ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam', pulleys: 'pulley' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
       </aside>
     </div>
     ${(m.panels || []).map((pn, i) => `<section class="box xpanel" id="${pn.id || 'xp' + i}"><h3>${pn.title}</h3>${pn.intro ? `<p class="xpintro">${pn.intro}</p>` : ''}<div class="xpbody"></div></section>`).join('')}

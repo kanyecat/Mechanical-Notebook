@@ -162,3 +162,8 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
   .gcard b{white-space:normal;overflow-wrap:anywhere}
   .gwarn{max-height:none;border-left:0}
 }
+
+/* pulley generator: the worked math in the inspector */
+.gmath{margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:var(--ink)}
+.gmath li{margin-bottom:8px}.gmath b{color:var(--red);font-weight:600}
+.gmath sub,.gmath sup{font-size:9px}

@@ -42,6 +42,11 @@ node serve.js        # or: yarn dev  →  http://localhost:5173
 - **Linkages** – four-bar (with any coupler point traced) and slider-crank. Shows Grashof type, transmission
   angle, swing, stroke and time ratio. Links come out as plates with pivot holes.
 
+- **Pulleys** – belt drives with pulleys placed anywhere (horizontal, vertical, diagonal), back-side idlers,
+  pulleys sharing a shaft for multi-stage drives, and loads hung from any pulley's drum. Shows every pulley's speed,
+  belt length and speed, wrap angles, belt slip (Euler–Eytelwein) and the motor torque needed. A second mode
+  designs block-and-tackle lifting systems: mechanical advantage, effort with sheave friction, rope pulled and beam load.
+
 Exports, all in millimetres:
 - **SVG** – outlines, one group per part, 0.1 mm stroke (laser cutters).
 - **DXF** – AutoCAD R12, one layer per part, holes as true circles (CAD, CNC, laser).

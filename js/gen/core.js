@@ -5,7 +5,7 @@
 (function () {
   const G = window.GEN = window.GEN || {};
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  G.LIST = [['gears', 'Gears'], ['linkages', 'Linkages'], ['cams', 'Cams']];
+  G.LIST = [['gears', 'Gears'], ['linkages', 'Linkages'], ['cams', 'Cams'], ['pulleys', 'Pulleys']];
   // the colour theme (paper by default here, or blueprint) is shared with the rest of the site: see js/theme.js
 
   G.create = function (def) {
