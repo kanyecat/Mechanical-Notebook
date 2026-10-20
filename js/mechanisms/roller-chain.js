@@ -36,7 +36,7 @@
       g.circle(Ly.D, 0, 14, { fill: COL.white }); g.circle(Ly.D, 0, 6, { fill: COL.ink });
       // chain
       const pts = []; for (let k = 0; k < Ly.Nl; k++) pts.push(pt(k * Ly.pitch + a * Ly.r1, Ly));
-      for (let k = 0; k < Ly.Nl; k++) { const q = pts[k], q2 = pts[(k + 1) % Ly.Nl]; g.bar(X(q), Y(q), X(q2), Y(q2), P * 0.3, { nopivot: true, fill: 'rgba(31,85,144,.9)' }); }
+      for (let k = 0; k < Ly.Nl; k++) { const q = pts[k], q2 = pts[(k + 1) % Ly.Nl]; g.bar(X(q), Y(q), X(q2), Y(q2), P * 0.3, { nopivot: true, fill: MM.tint('white', .9) }); }
       for (let k = 0; k < Ly.Nl; k++) { const q = pts[k]; g.circle(X(q), Y(q), P * 0.21, { fill: k === 0 ? COL.red : COL.white, color: k === 0 ? COL.red : COL.ink }); g.circle(X(q), Y(q), P * 0.07, { fill: COL.ink, w: 0.5 }); }
       c.restore();
       g.text('driver N = ' + p.n1, 350 + (-(Ly.D) / 2 - 0) * sc + (0 - 0), 22, { size: 12, weight: 700, align: 'center' });

@@ -1,9 +1,23 @@
 /* Mechanisms engine: drawing helpers, animation loop, graph, page mounting */
 (function () {
   const TAU = Math.PI * 2;
-  /* Blueprint palette. Names kept from the paper version: ink = line colour, red = accent (amber), white = part fill. */
-  const COL = { ink: '#eef5ff', red: '#ffd166', paper: '#1b4b82', white: '#1f5590', faint: 'rgba(238,245,255,.55)', hatch: 'rgba(238,245,255,.32)', blue: '#8fd3ff' };
+  /* Drawing colours for each theme. ink = lines, red = accent, white = part fill, paper = background (used for cut-outs). */
+  const PALETTES = {
+    blueprint: { ink: '#eef5ff', red: '#ffd166', paper: '#1b4b82', white: '#1f5590', faint: 'rgba(238,245,255,.55)', hatch: 'rgba(238,245,255,.32)', blue: '#8fd3ff' },
+    paper: { ink: '#1b2638', red: '#d9480f', paper: '#f7f5ef', white: '#ffffff', faint: 'rgba(27,38,56,.5)', hatch: 'rgba(27,38,56,.3)', blue: '#2f6fb3' }
+  };
+  const themeName = () => (document.documentElement && document.documentElement.dataset.theme === 'paper') ? 'paper' : 'blueprint';
+  const COL = Object.assign({}, PALETTES[themeName()]);   // mechanism files keep a reference to this object, so it is updated in place
   const MM = { registry: {}, TAU, COL };
+  // a see-through version of a palette colour, e.g. MM.tint('red', .4)
+  MM.tint = (name, a) => { const h = COL[name].replace('#', ''); return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`; };
+  MM.applyTheme = function () {
+    const next = PALETTES[themeName()], rev = {}; Object.keys(COL).forEach(k => rev[COL[k]] = k);
+    // graph lines were given palette colours when each mechanism loaded; move them to the new palette
+    Object.values(MM.registry).forEach(m => m.graph && m.graph.series.forEach(se => { if (se.color && rev[se.color]) se.color = next[rev[se.color]]; }));
+    Object.assign(COL, next);
+  };
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('mn-theme', () => MM.applyTheme());
   MM.register = function (m) { MM.registry[m.slug] = m; };
   MM.cat = () => window.MM_CATALOG.filter(c => MM.registry[c.slug]);
 
@@ -65,7 +79,7 @@
   G.text = function (s, x, y, o) {
     o = o || {}; const c = this.c;
     c.save(); c.fillStyle = o.color || COL.ink; c.textAlign = o.align || 'left'; c.textBaseline = o.base || 'middle';
-    c.font = (o.weight || 500) + ' ' + (o.size || 12) + 'px ' + (o.font || 'ui-monospace,Menlo,Consolas,monospace');
+    c.font = (o.weight || 500) + ' ' + ((o.size || 12) * (this.ts || 1)).toFixed(1) + 'px ' + (o.font || 'ui-monospace,Menlo,Consolas,monospace');
     if (o.rot) { c.translate(x, y); c.rotate(o.rot); c.fillText(s, 0, 0); } else c.fillText(s, x, y);
     c.restore();
   };
@@ -124,24 +138,32 @@
 
   /* ---------- render one frame of mechanism ---------- */
   MM.frame = function (canvas, m, a, p) {
-    const v = m.view || { w: 700, h: 540 }; const f = fit(canvas, v.w, v.h);
-    const ctx = canvas.getContext('2d'); const s = canvas.width / v.w;
+    const v = m.view || { w: 700, h: 540 }; let s, ox = 0, oy = 0;
+    if (canvas.hasAttribute('data-box')) {          // fit the whole drawing inside the canvas box set by CSS (cards on the home page)
+      const dpr = Math.min(window.devicePixelRatio || 1, 2), cw = canvas.clientWidth || 300, ch = canvas.clientHeight || 225;
+      const pw = Math.round(cw * dpr), ph = Math.round(ch * dpr); if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+      s = Math.min(pw / v.w, ph / v.h) * 0.96; ox = (pw - v.w * s) / 2; oy = (ph - v.h * s) / 2;
+    } else { fit(canvas, v.w, v.h); s = canvas.width / v.w; }
+    const ctx = canvas.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(s, 0, 0, s, 0, 0);
+    ctx.setTransform(s, 0, 0, s, ox, oy);
     const g = new Gfx(ctx, v); g.state = m._state || (m._state = {});
+    // on a phone the drawing is shrunk to fit, so labels are drawn bigger to stay readable (not on home-page thumbnails)
+    if (!canvas.hasAttribute('data-box')) { const cw = canvas.clientWidth || v.w; g.ts = Math.max(1, Math.min(1.45, 0.55 * v.w / cw)); }
     m.draw(g, a, p);
   };
 
   /* ---------- graph ---------- */
   MM.graphFrame = function (canvas, m, a, p) {
     const gr = m.graph; if (!gr) return;
-    const W = 640, H = 150; fit(canvas, W, H);
+    // narrow screens: a smaller drawing width (so text is bigger), no side readout (the Right now box shows it) and the legend on top
+    const narrow = (canvas.clientWidth || 640) < 520, W = narrow ? 360 : 640, H = narrow ? 190 : 150; fit(canvas, W, H);
     const ctx = canvas.getContext('2d'); const s = canvas.width / W;
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.setTransform(s, 0, 0, s, 0, 0);
     const g = new Gfx(ctx, { w: W, h: H });
-    const x0 = 44, x1 = W - 120, y0 = 22, y1 = H - 14; const per = gr.period || TAU, sh = gr.shift || 0;
+    const x0 = 44, x1 = narrow ? W - 10 : W - 120, y0 = narrow ? 46 : 22, y1 = H - 14; const per = gr.period || TAU, sh = gr.shift || 0;
     const lo = gr.min, hi = gr.max, Y = v => y1 - (v - lo) / (hi - lo) * (y1 - y0), X = t => x0 + t / per * (x1 - x0);
-    g.text(gr.title.toUpperCase(), 0, 8, { size: 11, weight: 600 });
+    g.text(gr.title.toUpperCase(), 0, 8, { size: narrow ? Math.min(11, W / (gr.title.length * 0.64)) : 11, weight: 600 });   // shrink a long title to fit
     (gr.ticks || []).forEach(t => { g.line(x0, Y(t.v), x1, Y(t.v), { w: 0.7, dash: [2, 4], color: COL.faint }); g.text(t.label, x0 - 6, Y(t.v), { size: 10, align: 'right', color: COL.faint }); });
     gr.series.forEach(se => {
       const pts = []; for (let i = 0; i <= 240; i++) { const t = i / 240 * per; pts.push([X(t), Y(se.f(t - sh, p))]); }
@@ -150,6 +172,7 @@
     const t = (((a + sh) % per) + per) % per;
     g.line(X(t), y0 - 6, X(t), y1, { w: 0.9, color: COL.faint });
     gr.series.forEach(se => g.dot(X(t), Y(se.f(t - sh, p)), 4.5, se.color || COL.red));
+    if (narrow) { let lx = 0; gr.series.forEach(se => { if (!se.name) return; g.line(lx, 28, lx + 16, 28, { color: se.color || COL.red, w: 2, dash: se.dash }); g.text(se.name, lx + 21, 28, { size: 10.5 }); lx += 30 + se.name.length * 6.6; }); return; }
     const r = gr.readout ? gr.readout(a, p) : null;
     if (r) { g.text(r.big, W - 112, 62, { size: 22, weight: 800, color: COL.red, font: 'Barlow Condensed,Arial Narrow,sans-serif' }); g.text(r.small, W - 112, 84, { size: 10, color: COL.faint }); }
     gr.series.forEach((se, i) => { if (se.name) { g.line(W - 112, 108 + i * 14, W - 94, 108 + i * 14, { color: se.color || COL.red, w: 2, dash: se.dash }); g.text(se.name, W - 88, 108 + i * 14, { size: 10 }); } });
@@ -158,9 +181,11 @@
   /* ---------- page mount ---------- */
   // mechanisms that have a generator page, with starting settings
   const MAKE = { 'spur-gears': ['gears'], 'rack-pinion': ['gears', { type: 'rack' }], 'four-bar': ['linkages'], 'slider-crank': ['linkages', { kind: 'slider' }], 'cam-follower': ['cams'] };
+  MM.elementsCat = () => (window.MM_ELEMENTS || []).filter(c => MM.registry[c.slug]);
   MM.mount = function (slug) {
-    const m = MM.registry[slug], cat = MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
-    const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length];
+    const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug);
+    const cat = isEl ? MM.elementsCat() : MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
+    const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length], pre = isEl ? 'E' : 'M';
     document.title = meta.name + ' · Mechanical Notebook';
     const params = m.params || []; const P = {}; params.forEach(q => P[q.key] = q.value);
     const fmt = (q, v) => (q.step < 1 ? (+v).toFixed(q.step < 0.1 ? 2 : 1) : String(v)) + (q.unit || '');
@@ -168,38 +193,51 @@
       ? `<div class="param"><span class="plabel">${q.label}</span><div class="seg" data-seg="${q.key}">${q.options.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === q.value ? 'on' : ''}">${l}</button>`).join('')}</div></div>`
       : `<label class="param"><span class="plabel">${q.label}</span><input data-k="${q.key}" type="range" min="${q.min}" max="${q.max}" step="${q.step}" value="${q.value}"><output data-o="${q.key}">${fmt(q, q.value)}</output></label>`;
     const root = document.getElementById('app');
+    const apps = Array.isArray(meta.app) ? meta.app : [meta.app || meta.used];
     root.innerHTML = `
-    <div class="topbar"><a href="../index.html">← All mechanisms</a><span>${meta.category}</span><a href="${next.slug}.html">Next →</a></div>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../index.html#${isEl ? 'elements' : 'mechanisms'}">${isEl ? 'Elements' : 'Mechanisms'}</a><span>/</span><span>${meta.category}</span>
+      <span class="crnav"><a href="${prev.slug}.html" title="${prev.name}">← Prev</a><a href="${next.slug}.html" title="${next.name}">Next →</a></span></nav>
     <header class="phead">
-      <div class="kicker">No. ${meta.num}</div>
+      <div class="kicker">${isEl ? 'Element' : 'No.'} ${meta.num}</div>
       <h1 class="title">${meta.name}</h1>
       <p class="lede">${meta.fn}</p>
     </header>
     <div class="stage">
       <section class="box drawing">
-        <canvas id="main"></canvas>
+        <canvas id="main" aria-label="Animated drawing of the ${meta.name}"></canvas>
         <div class="controls">
           <button id="play" type="button">Pause</button>
           <button id="rev" type="button" class="ghost">Reverse</button>
           <label>Speed <input id="speed" type="range" min="0.1" max="3" step="0.05" value="1"><output id="speedv">1.0×</output></label>
-          <label>Angle <input id="scrub" type="range" min="0" max="360" step="1" value="0"><output id="angv">0°</output></label>
+          <label>Position <input id="scrub" type="range" min="0" max="360" step="1" value="0"><output id="angv">0°</output></label>
         </div>
         ${params.length ? `<div class="adjust"><h3>Adjust the design</h3>${params.map(paramHTML).join('')}</div>` : ''}
       </section>
       <aside class="side">
         <div class="box now"><h3>Right now</h3><div id="ro">&nbsp;</div></div>
-        <div class="box notes"><h3>How it works</h3><ol>${meta.notes.map(n => `<li>${n}</li>`).join('')}</ol></div>
-        <div class="box used"><h3>${meta.knownLabel || 'Used in'}</h3><p>${meta.used}</p></div>
+        <div class="box notes"><h3>How it works</h3><ol>${meta.notes.map(n => `<li>${n.replace(/^(Good to know|Try it):/, '<b>$1:</b>')}</li>`).join('')}</ol></div>
+        <div class="box used"><h3>Application</h3><ul>${apps.map(x => `<li>${x}</li>`).join('')}</ul></div>
         ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
       </aside>
     </div>
-    ${m.graph ? `<section class="box graphbox"><h3>Motion graph</h3><canvas id="graph"></canvas><p class="hint">The marker follows the drawing. Drag the angle slider to step through one cycle.</p></section>` : ''}
+    ${(m.panels || []).map((pn, i) => `<section class="box xpanel" id="${pn.id || 'xp' + i}"><h3>${pn.title}</h3>${pn.intro ? `<p class="xpintro">${pn.intro}</p>` : ''}<div class="xpbody"></div></section>`).join('')}
+    ${m.graph ? `<section class="box graphbox"><h3>Motion graph</h3><canvas id="graph"></canvas><p class="hint">The marker follows the drawing. Drag the position slider to step through one cycle.</p></section>` : ''}
     ${MM.math && MM.math[slug] ? '<section class="box mathbox"><h3>Do the math</h3><div id="learn"></div></section>' : ''}
+    ${meta.fun ? `<section class="box fun"><h3>Fun fact</h3><p>${meta.fun}</p></section>` : ''}
     <div class="titleblock">
       <div><small>Category</small>${meta.category}</div><div><small>Sheet</small>${idx + 1} of ${cat.length}</div>
-      <div class="brand">Mechanical&nbsp;<span>Notebook</span></div><div><small>Dwg no.</small><div class="dwg">M-${meta.num}</div></div>
+      <div class="brand">Mechanical&nbsp;<span>Notebook</span></div><div><small>Dwg no.</small><div class="dwg">${pre}-${meta.num}</div></div>
     </div>
     <div class="pager"><a href="${prev.slug}.html">← ${prev.name}</a><a href="${next.slug}.html">${next.name} →</a></div>`;
+    if (window.MNTheme) MNTheme.scan(root);
+    if (window.MNGloss) ['.lede', '.notes', '.used', '.fun'].forEach(s => MNGloss.apply(root.querySelector(s)));
+    // extra panels (a dimension table, a chart of types...): html(P) is redrawn when a design value changes, init(body) runs once
+    const panels = (m.panels || []).map((pn, i) => ({ pn, body: root.querySelectorAll('.xpanel .xpbody')[i] }));
+    const drawPanels = first => panels.forEach(({ pn, body }) => {
+      if (pn.html && (first || pn.live)) { body.innerHTML = pn.html(P); if (window.MNGloss) MNGloss.apply(body); }
+      if (first && pn.init) pn.init(body, P, { setParam: (k, v) => setParam(k, v) });
+    });
+    drawPanels(true);
     const cv = document.getElementById('main'), gc = document.getElementById('graph');
     let a = 0, playing = true, dir = 1, speed = 1, last = performance.now();
     const play = document.getElementById('play'), sp = document.getElementById('speed'), sc = document.getElementById('scrub'), ro = document.getElementById('ro');
@@ -218,12 +256,13 @@
       const sl = root.querySelector(`[data-k="${key}"]`); if (sl) { sl.value = v; root.querySelector(`[data-o="${key}"]`).textContent = fmt(q, v); }
       const seg = root.querySelector(`[data-seg="${key}"]`); if (seg) seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
       if (learn && from !== 'learn') learn.paramChanged(key, v);
+      drawPanels(false);
     }
     root.querySelectorAll('[data-k]').forEach(el => el.oninput = () => setParam(el.dataset.k, el.value));
     root.querySelectorAll('[data-seg]').forEach(seg => seg.onclick = e => { const b = e.target.closest('button'); if (b) setParam(seg.dataset.seg, b.dataset.v); });
     const lh = document.getElementById('learn');
     if (lh && MM.learn) learn = MM.learn(lh, slug, { m, P, setParam: (k, v) => setParam(k, v, 'learn'), getAngle: () => a });
-    document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); setPlaying(!playing); } });
+    document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); setPlaying(!playing); } });
     function render() {
       MM.frame(cv, m, a, P); if (gc) MM.graphFrame(gc, m, a, P);
       const r = m.graph && m.graph.readout ? m.graph.readout(a, P) : null; if (r) ro.innerHTML = `<b>${r.big}</b><span>${r.small}</span>`;
@@ -242,28 +281,35 @@
 
   /* ---------- landing page ---------- */
   MM.landing = function () {
-    const cat = MM.cat(), grid = document.getElementById('grid'), fl = document.getElementById('filters');
+    const cat = MM.cat(), els = MM.elementsCat(), grid = document.getElementById('grid'), egrid = document.getElementById('egrid'), fl = document.getElementById('filters');
     const cats = ['All'].concat([...new Set(cat.map(c => c.category))]); let cur = 'All';
-    fl.innerHTML = cats.map(c => `<button data-c="${c}" class="${c === 'All' ? 'on' : ''}">${c}</button>`).join('');
-    grid.innerHTML = cat.map(c => `<a class="card" data-c="${c.category}" href="pages/${c.slug}.html"><canvas data-s="${c.slug}"></canvas><div class="meta"><div class="num">NO. ${c.num}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div></div></a>`).join('');
-    fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; cur = b.dataset.c; fl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); grid.querySelectorAll('.card').forEach(k => k.style.display = (cur === 'All' || k.dataset.c === cur) ? '' : 'none'); };
-    const hover = new Map(); const cvs = [...grid.querySelectorAll('canvas')];
+    fl.innerHTML = cats.map(c => `<button type="button" data-c="${c}" class="${c === 'All' ? 'on' : ''}" aria-pressed="${c === 'All'}">${c}</button>`).join('');
+    const card = (c, dir) => `<a class="card" data-c="${c.category}" href="${dir}/${c.slug}.html"><canvas data-s="${c.slug}" data-box aria-hidden="true"></canvas><div class="meta"><div class="num">${dir === 'elements' ? 'E' : 'M'}-${c.num} · ${c.category}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div></div></a>`;
+    const soon = (t, s) => `<div class="card soon"><div class="meta"><div class="num">Coming soon</div><div class="name">${t}</div><div class="fn">${s}</div></div></div>`;
+    grid.innerHTML = cat.map(c => card(c, 'pages')).join('') + soon('More on the way', 'New mechanisms are added to the notebook over time.');
+    if (egrid) egrid.innerHTML = els.map(c => card(c, 'elements')).join('') + soon('More on the way', 'Bushings, couplings, clutches, dowel pins and more are planned.');
+    fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; cur = b.dataset.c; fl.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); grid.querySelectorAll('.card').forEach(k => k.style.display = (cur === 'All' || k.dataset.c === cur || k.classList.contains('soon')) ? '' : 'none'); };
+    const hover = new Map(); const cvs = [...document.querySelectorAll('canvas[data-s]')];
     const params = m => { const P = {}; (m.params || []).forEach(q => P[q.key] = q.value); return P; };
     cvs.forEach(cv => {
-      const m = MM.registry[cv.dataset.s], per = m.period || TAU; const P = params(m);
-      cv.style.aspectRatio = (m.view ? m.view.w + '/' + m.view.h : '700/540');
-      cv._a = per * 0.17; MM.frame(cv, m, cv._a, P);
-      const card = cv.parentElement;
-      card.onmouseenter = () => hover.set(cv, true); card.onmouseleave = () => hover.delete(cv);
-      card.addEventListener('touchstart', () => hover.set(cv, true), { passive: true });
+      const m = MM.registry[cv.dataset.s], per = m.period || TAU;
+      cv._a = per * 0.17; MM.frame(cv, m, cv._a, params(m));
+      const host = cv.closest('a, .gencard') || cv.parentElement;
+      if (cv.hasAttribute('data-live')) { hover.set(cv, 0.45); return; }
+      host.addEventListener('mouseenter', () => hover.set(cv, 1)); host.addEventListener('mouseleave', () => hover.delete(cv));
+      host.addEventListener('focus', () => hover.set(cv, 1)); host.addEventListener('blur', () => hover.delete(cv));
+      host.addEventListener('touchstart', () => hover.set(cv, 1), { passive: true });
     });
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let last = performance.now();
     (function loop(now) {
       const dt = Math.min((now - last) / 1000, 0.05); last = now;
-      hover.forEach((_, cv) => { const m = MM.registry[cv.dataset.s]; cv._a += dt * (TAU / 5) * ((m.period || TAU) / TAU); MM.frame(cv, m, cv._a, params(m)); });
+      hover.forEach((sp, cv) => { if (still && cv.hasAttribute('data-live')) return; const m = MM.registry[cv.dataset.s]; cv._a += sp * dt * (TAU / 5) * ((m.period || TAU) / TAU); MM.frame(cv, m, cv._a, params(m)); });
       requestAnimationFrame(loop);
     })(last);
-    window.addEventListener('resize', () => cvs.forEach(cv => { const m = MM.registry[cv.dataset.s]; MM.frame(cv, m, cv._a, params(m)); }));
+    const redraw = () => cvs.forEach(cv => { const m = MM.registry[cv.dataset.s]; MM.frame(cv, m, cv._a, params(m)); });
+    window.addEventListener('resize', redraw);
+    window.addEventListener('mn-theme', () => requestAnimationFrame(redraw));
   };
 
   window.MM = MM;

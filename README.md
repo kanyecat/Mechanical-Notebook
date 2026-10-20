@@ -12,15 +12,21 @@ Plain HTML, CSS and JavaScript. No dependencies, no build step needed to view.
 node serve.js        # or: yarn dev  →  http://localhost:5173
 ```
 
-`serve.js` runs `build.js` first, which writes `index.html` and `pages/<slug>.html` for every file in `js/mechanisms/`.
+`serve.js` runs `build.js` first, which writes `index.html`, `about.html`, `pages/<slug>.html` for every file in
+`js/mechanisms/` and `elements/<slug>.html` for every file in `js/elements/`. The top menu and footer live in `build.js`.
 
 ## What's inside
 
 | Folder | What it holds |
 |---|---|
 | `js/mechanisms/` | One file per animated mechanism (drawing, sliders, motion graph) |
+| `js/elements/` | One file per mechanical element (bearings, fasteners, springs...) |
 | `js/math/` | The calculator, practice problems and challenges for each mechanism |
-| `js/catalog.js` | Names, numbers, notes and categories |
+| `js/catalog.js` | Names, How it works, Application and Fun fact text for every page |
+| `js/glossary.js` | Plain-language definitions shown when you hover an underlined term |
+| `js/theme.js` | Blueprint / paper theme switch shared by every page |
+| `js/site.js` | Top menu (mobile menu and Generators drop-down) |
+| `js/analytics.js` | Google Analytics 4 visit counting. Paste your Measurement ID into `GA_ID` to turn it on |
 | `js/engine.js`, `js/learn.js` | Shared drawing engine and the "Do the math" panel |
 | `generators/`, `js/gen/` | Gear, linkage and cam generators with SVG / DXF / STL export |
 | `test/` | `node test/harness.js` checks every mechanism for errors and NaNs |
@@ -46,10 +52,10 @@ that "Open…" loads again.
 
 Known simplifications: gear roots are a plain arc (no trochoid fillet), and internal gears don't take profile shift.
 
-## Add a mechanism
+## Add a mechanism or element
 
-1. Add its metadata to `js/catalog.js`.
-2. Create `js/mechanisms/<slug>.js` calling `MM.register({ slug, view, params, draw, graph })`.
+1. Add its text to `MM_CATALOG` (mechanisms) or `MM_ELEMENTS` (elements) in `js/catalog.js`.
+2. Create `js/mechanisms/<slug>.js` or `js/elements/<slug>.js` calling `MM.register({ slug, view, params, draw, graph })`.
 3. Optionally create `js/math/<slug>.js` calling `MM.addMath(slug, { inputs, outputs, problems, challenges })`.
 4. Run `node build.js` and `node test/harness.js <slug>`.
 

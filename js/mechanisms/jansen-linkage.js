@@ -40,11 +40,11 @@
       const s = solve(a, sg), pp = {}; for (const k in s) pp[k] = P(s[k]);
       const gy = OY - ymin * S + 8;
       g.ground(60, 640, gy);
-      g.trace(path.map(P), { color: 'rgba(255,209,102,.55)', w: 1.6, dash: [5, 4] });
+      g.trace(path.map(P), { color: MM.tint('red', .55), w: 1.6, dash: [5, 4] });
       const O_ = P(O), C_ = P(Cax);
       // rigid plates
-      g.poly([pp.T, pp.L, O_], { fill: 'rgba(31,85,144,.9)', hatch: { spacing: 6, cx: O_[0], cy: O_[1] } });
-      g.poly([pp.Z, pp.Y, pp.F], { fill: 'rgba(31,85,144,.9)', hatch: { spacing: 6, cx: pp.Y[0], cy: pp.Y[1] } });
+      g.poly([pp.T, pp.L, O_], { fill: MM.tint('white', .9), hatch: { spacing: 6, cx: O_[0], cy: O_[1] } });
+      g.poly([pp.Z, pp.Y, pp.F], { fill: MM.tint('white', .9), hatch: { spacing: 6, cx: pp.Y[0], cy: pp.Y[1] } });
       const bar = (p, q) => g.bar(p[0], p[1], q[0], q[1], 9, { nopivot: true });
       bar(pp.T, pp.X); bar(pp.X, pp.Y); bar(O_, pp.Y); bar(pp.L, pp.Z);
       g.line(O_[0], O_[1], C_[0], C_[1], { w: 7, color: COL.ink });

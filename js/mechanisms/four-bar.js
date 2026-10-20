@@ -19,8 +19,8 @@
     draw(g, a) {
       const s = solve(a);
       g.ground(O2[0] - 60, O4[0] + 60, O2[1] + 20);
-      g.trace(curve, { color: 'rgba(255,209,102,.45)', w: 1.4, dash: [5, 3] });
-      g.poly([[s.ax, s.ay], [s.bx, s.by], [s.px, s.py]], { fill: 'rgba(31,85,144,.85)', hatch: { spacing: 6, cx: s.px, cy: s.py } });
+      g.trace(curve, { color: MM.tint('red', .45), w: 1.4, dash: [5, 3] });
+      g.poly([[s.ax, s.ay], [s.bx, s.by], [s.px, s.py]], { fill: MM.tint('white', .85), hatch: { spacing: 6, cx: s.px, cy: s.py } });
       g.bar(O2[0], O2[1], s.ax, s.ay, 12, { nopivot: true });
       g.bar(O4[0], O4[1], s.bx, s.by, 12, { nopivot: true });
       g.line(O2[0], O2[1], O4[0], O4[1], { w: 1, dash: [6, 4], color: COL.faint });

@@ -17,12 +17,12 @@
       const full = [], done = [], u = ((a % TAU) + TAU) % TAU;
       for (let i = 0; i <= 180; i++) { const q = pos(i / 180 * TAU, p.t).P; full.push(q); if (i / 180 * TAU <= u) done.push(q); }
       done.push(s.P);
-      g.trace(full, { color: 'rgba(255,209,102,.45)', w: 1.2, dash: [5, 3] });
+      g.trace(full, { color: MM.tint('red', .45), w: 1.2, dash: [5, 3] });
       g.trace(done, { color: COL.red, w: 2 });
       // sliders and rod
       [[s.A, 0], [s.B, 1]].forEach(([q, v]) => g.poly(v ? [[q[0] - 11, q[1] - 15], [q[0] + 11, q[1] - 15], [q[0] + 11, q[1] + 15], [q[0] - 11, q[1] + 15]] : [[q[0] - 15, q[1] - 11], [q[0] + 15, q[1] - 11], [q[0] + 15, q[1] + 11], [q[0] - 15, q[1] + 11]], { fill: COL.white }));
       const e0 = p.t < 0 ? s.P : s.A, e1 = p.t > 1 ? s.P : s.B;
-      g.bar(e0[0], e0[1], e1[0], e1[1], 10, { nopivot: true, fill: 'rgba(31,85,144,.9)' });
+      g.bar(e0[0], e0[1], e1[0], e1[1], 10, { nopivot: true, fill: MM.tint('white', .9) });
       g.pivot(s.A[0], s.A[1], 6); g.pivot(s.B[0], s.B[1], 6);
       g.dot(s.P[0], s.P[1], 7, COL.red);
       g.text('A', s.A[0] + 14, s.A[1] + 24, { size: 13, weight: 700 }); g.text('B', s.B[0] - 26, s.B[1] - 4, { size: 13, weight: 700 });

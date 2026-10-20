@@ -30,9 +30,9 @@
       const tipX = s.l - SLACK, tipAng = T0 - tipX * STEP;
       const xw = tipX - s.W, tipR = s.engaged ? RR : surf(xw);  // tip rides on the teeth unless it is pushing
       const pv = P(tipAng + BETA, RP), tip = P(tipAng, Math.max(tipR, RR) + 1), lv = P(tipAng + BETA, RP + 50);
-      g.bar(CX, CY, lv[0], lv[1], 18, { nopivot: true, fill: 'rgba(31,85,144,.92)' });
+      g.bar(CX, CY, lv[0], lv[1], 18, { nopivot: true, fill: MM.tint('white', .92) });
       g.text('lever', ...P(tipAng + BETA + 0.06, RP + 74), { size: 11, align: 'center', color: COL.faint });
-      g.bar(pv[0], pv[1], tip[0], tip[1], 10, { nopivot: true, color: COL.red, fill: 'rgba(255,209,102,.18)' });
+      g.bar(pv[0], pv[1], tip[0], tip[1], 10, { nopivot: true, color: COL.red, fill: MM.tint('red', .18) });
       g.pivot(pv[0], pv[1], 5);
       g.text('drive pawl', ...P(tipAng + BETA + 0.3, RP + 10), { size: 11, align: 'center', color: COL.red });
       // holding pawl, fixed to the frame

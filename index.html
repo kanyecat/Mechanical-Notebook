@@ -1,9 +1,73 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mechanical Notebook</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css"></head><body><div class="sheet" id="app">
-<div class="topbar"><span>Mechanical Notebook</span><span>18 mechanisms</span></div>
-<div class="hero"><div class="kicker">How machines move, and the math behind them</div><h1 class="title">Mechanical Notebook</h1>
-<p>Pick a mechanism to watch it move, change its size, and work out the numbers: speeds, ratios, forces and strokes. Hover a card to preview.</p>
-<div class="genlinks"><span>Generators</span><a href="generators/gears.html">Gears →</a><a href="generators/linkages.html">Linkages →</a><a href="generators/cams.html">Cams →</a></div></div>
-<div class="filters" id="filters"></div><div class="grid" id="grid"></div>
-<div class="foot">Made by Joo Hee Kim.<br>Inspired by Five Hundred and Seven Mechanical Movements by Henry T. Brown<br>Plain HTML, CSS and JavaScript.</div></div><script src="js/catalog.js"></script><script src="js/engine.js"></script><script src="js/mechanisms/belt-pulleys.js"></script><script src="js/mechanisms/cam-follower.js"></script><script src="js/mechanisms/double-hookes-joint.js"></script><script src="js/mechanisms/four-bar.js"></script><script src="js/mechanisms/geneva-drive.js"></script><script src="js/mechanisms/jansen-linkage.js"></script><script src="js/mechanisms/peaucellier.js"></script><script src="js/mechanisms/planetary-gears.js"></script><script src="js/mechanisms/quick-return.js"></script><script src="js/mechanisms/rack-pinion.js"></script><script src="js/mechanisms/ratchet-pawl.js"></script><script src="js/mechanisms/roller-chain.js"></script><script src="js/mechanisms/scotch-yoke.js"></script><script src="js/mechanisms/slider-crank.js"></script><script src="js/mechanisms/spur-gears.js"></script><script src="js/mechanisms/trammel.js"></script><script src="js/mechanisms/tusi-couple.js"></script><script src="js/mechanisms/worm-gear.js"></script><script>MM.landing()</script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mechanical Notebook: how machines move, and the math behind them</title><meta name="description" content="Interactive, animated mechanisms and machine parts with the math behind them, plus free gear, linkage and cam generators with SVG, DXF and STL export.">
+<meta property="og:title" content="Mechanical Notebook: how machines move, and the math behind them"><meta property="og:description" content="Interactive, animated mechanisms and machine parts with the math behind them, plus free gear, linkage and cam generators with SVG, DXF and STL export."><meta property="og:type" content="website"><meta property="og:url" content="https://mechanicalnotebook.com/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b4b82'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23ffd166' stroke-width='3' stroke-dasharray='4 3'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23eef5ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="js/theme.js"></script><script src="js/analytics.js"></script>
+<link rel="stylesheet" href="css/style.css"></head><body><a class="skip" href="#app">Skip to content</a>
+<header class="nav"><div class="navin">
+  <a class="brand" href="index.html" aria-label="Mechanical Notebook home"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-dasharray="3.2 2.4"/><circle cx="12" cy="12" r="2.2"/></svg><span>Mechanical <b>Notebook</b></span></a>
+  <nav class="links" id="navlinks" aria-label="Main">
+    <a href="index.html#mechanisms">Mechanisms</a>
+    <a href="index.html#elements">Elements</a>
+    <div class="dd"><button type="button" class="ddb" aria-expanded="false" aria-haspopup="true">Generators <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+      <div class="ddm">
+        <a href="generators/gears.html"><b>Gear generator</b><span>Spur, ring and rack gears, gear trains</span></a>
+        <a href="generators/linkages.html"><b>Linkage generator</b><span>Four-bar, slider crank, multi-link</span></a>
+        <a href="generators/cams.html"><b>Cam generator</b><span>Motion programs, followers, checks</span></a>
+      </div></div>
+    <a href="about.html">About</a>
+  </nav>
+  <span class="navr"><span data-theme-picker></span>
+  <button type="button" class="menub" aria-expanded="false" aria-controls="navlinks" aria-label="Open menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="m1" d="M4 7h16"/><path class="m2" d="M4 12h16"/><path class="m3" d="M4 17h16"/></svg></button></span>
+</div></header>
+<main class="sheet home" id="app">
+  <section class="hero">
+    <div class="heromain">
+      <div class="kicker">How machines move, and the math behind them</div>
+      <h1 class="title">Mechanical Notebook</h1>
+      <p class="lede" data-gloss>Watch mechanisms and machine parts move, change their sizes, and work out the real numbers: speeds, ratios, forces and strokes. Then design your own with the generators and export files to make them.</p>
+      <div class="cta"><a class="btn" href="#mechanisms">Browse mechanisms</a><a class="btn ghost" href="#generators">Design with a generator</a></div>
+    </div>
+    <nav class="toc" aria-label="Contents"><div class="toch">Contents</div><ol>
+      <li><a href="#generators"><span class="tn">01</span><span class="tt">Generators<small>Design and export parts</small></span><span class="tc">3</span></a></li>
+      <li><a href="#mechanisms"><span class="tn">02</span><span class="tt">Mechanisms<small>How motion is changed</small></span><span class="tc">18</span></a></li>
+      <li><a href="#elements"><span class="tn">03</span><span class="tt">Mechanical elements<small>The parts that hold machines together</small></span><span class="tc">8</span></a></li>
+      <li><a href="about.html"><span class="tn">04</span><span class="tt">About<small>Who made this and why</small></span><span class="tc">→</span></a></li>
+    </ol></nav>
+  </section>
+
+  <section id="generators" class="sec">
+    <header class="sech"><span class="secn">01</span><div><h2>Generators</h2><p>Design your own parts, check them for problems, and export files for laser cutting, CNC or 3D printing.</p></div></header>
+    <div class="gens">
+      <a class="gencard" href="generators/gears.html"><div class="gprev"><canvas data-s="spur-gears" data-live data-box aria-hidden="true"></canvas></div>
+        <div class="gtext"><h3>Gear generator</h3><p>Spur gears, ring gears and racks with true involute teeth. Connect as many gears as you like into a train and watch them turn.</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the gear generator →</span></div></a>
+      <a class="gencard" href="generators/linkages.html"><div class="gprev"><canvas data-s="four-bar" data-live data-box aria-hidden="true"></canvas></div>
+        <div class="gtext"><h3>Linkage generator</h3><p>Four-bar and slider-crank linkages, or build your own multi-link mechanism and trace the path of any point.</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the linkage generator →</span></div></a>
+      <a class="gencard" href="generators/cams.html"><div class="gprev"><canvas data-s="cam-follower" data-live data-box aria-hidden="true"></canvas></div>
+        <div class="gtext"><h3>Cam generator</h3><p>Program a motion step by step, choose a follower, and check the pressure angle and undercut before you cut.</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the cam generator →</span></div></a>
+    </div>
+    <p class="soonline">More generators (springs, belts and pulleys, Geneva drives) are on the way.</p>
+  </section>
+
+  <section id="mechanisms" class="sec">
+    <header class="sech"><span class="secn">02</span><div><h2>Mechanisms</h2><p>Each page has a moving drawing you can change, a step-by-step explanation, a motion graph, and a calculator with practice problems.</p></div></header>
+    <div class="filters" id="filters" role="group" aria-label="Filter mechanisms by category"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="elements" class="sec">
+    <header class="sech"><span class="secn">03</span><div><h2>Mechanical elements</h2><p>Bearings, fasteners, springs and the other everyday parts that hold machines together: how they work, how to choose them, and how to size them.</p></div></header>
+    <div class="grid" id="egrid"></div>
+  </section>
+</main><footer class="foot"><div class="footin">
+  <div class="fcol fabout"><div class="fbrand">Mechanical <b>Notebook</b></div>
+    <p>A free, open notebook of moving parts. Watch them move, change them, and work out the numbers.</p>
+    <p class="fsmall">Made by Joo Hee Kim · <a href="about.html">About this site</a></p></div>
+  <div class="fcol"><h4>Explore</h4>
+    <a href="index.html#mechanisms">Mechanisms</a><a href="index.html#elements">Mechanical elements</a>
+    <a href="generators/gears.html">Gear generator</a><a href="generators/linkages.html">Linkage generator</a><a href="generators/cams.html">Cam generator</a></div>
+  <div class="fcol"><h4>Project</h4>
+    <a href="https://github.com/kanyecat/Mechanical-Notebook" rel="noopener">Source code on GitHub</a><span>Free and open source (MIT licence)</span>
+    <span>Inspired by <i>507 Mechanical Movements</i> by Henry T. Brown (1868)</span><span>Visits are counted with Google Analytics</span></div>
+</div><div class="fbase"><span>© 2026 Joo Hee Kim</span><span>More mechanisms, elements and generators are on the way.</span></div></footer><script src="js/glossary.js"></script><script src="js/site.js"></script><script src="js/catalog.js"></script><script src="js/engine.js"></script><script src="js/mechanisms/geneva-drive.js"></script><script src="js/mechanisms/slider-crank.js"></script><script src="js/mechanisms/four-bar.js"></script><script src="js/mechanisms/scotch-yoke.js"></script><script src="js/mechanisms/cam-follower.js"></script><script src="js/mechanisms/jansen-linkage.js"></script><script src="js/mechanisms/ratchet-pawl.js"></script><script src="js/mechanisms/belt-pulleys.js"></script><script src="js/mechanisms/planetary-gears.js"></script><script src="js/mechanisms/peaucellier.js"></script><script src="js/mechanisms/trammel.js"></script><script src="js/mechanisms/quick-return.js"></script><script src="js/mechanisms/spur-gears.js"></script><script src="js/mechanisms/worm-gear.js"></script><script src="js/mechanisms/rack-pinion.js"></script><script src="js/mechanisms/roller-chain.js"></script><script src="js/mechanisms/double-hookes-joint.js"></script><script src="js/mechanisms/tusi-couple.js"></script><script src="js/elements/ball-bearing.js"></script><script src="js/elements/bolt-nut.js"></script><script src="js/elements/screw-types.js"></script><script src="js/elements/spring.js"></script><script src="js/elements/shaft-key.js"></script><script src="js/elements/retaining-ring.js"></script><script src="js/elements/timing-belt.js"></script><script src="js/elements/lead-screw.js"></script><script>MM.landing()</script></body></html>

@@ -16,11 +16,11 @@
       g.line(LINE_X, O[1] - 215, LINE_X, O[1] + 215, { w: 1, dash: [3, 4], color: COL.faint });
       g.text('straight line', LINE_X + 10, O[1] - 222, { size: 11, color: COL.faint });
       g.circle(F[0], F[1], DD, { dash: [4, 4], color: COL.faint, w: 0.9 });
-      g.poly([s.A, s.P, s.B, s.Q], { fill: 'rgba(255,209,102,.06)' });
+      g.poly([s.A, s.P, s.B, s.Q], { fill: MM.tint('red', .06) });
       g.bar(O[0], O[1], s.A[0], s.A[1], 10, { nopivot: true }); g.bar(O[0], O[1], s.B[0], s.B[1], 10, { nopivot: true });
       g.bar(s.A[0], s.A[1], s.P[0], s.P[1], 10, { nopivot: true }); g.bar(s.B[0], s.B[1], s.P[0], s.P[1], 10, { nopivot: true });
       g.bar(s.A[0], s.A[1], s.Q[0], s.Q[1], 10, { nopivot: true }); g.bar(s.B[0], s.B[1], s.Q[0], s.Q[1], 10, { nopivot: true });
-      g.bar(F[0], F[1], s.Q[0], s.Q[1], 12, { nopivot: true, fill: 'rgba(255,209,102,.18)', color: COL.red });
+      g.bar(F[0], F[1], s.Q[0], s.Q[1], 12, { nopivot: true, fill: MM.tint('red', .18), color: COL.red });
       g.fixed(O[0], O[1], 9); g.fixed(F[0], F[1], 9);
       [s.A, s.B, s.Q].forEach(q => g.pivot(q[0], q[1], 5));
       g.pivot(s.P[0], s.P[1], 5); g.dot(s.P[0], s.P[1], 7, COL.red); g.dot(s.Q[0], s.Q[1], 5, COL.red);

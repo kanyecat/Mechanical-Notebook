@@ -22,7 +22,7 @@
       g.centre(CX, CY, ro + 14);
       // carrier arms
       const cang = md.wc * a;
-      for (let i = 0; i < 3; i++) { const t = i * TAU / 3 + cang; g.bar(CX, CY, CX + rc * Math.cos(t), CY + rc * Math.sin(t), 13, { nopivot: true, fill: 'rgba(31,85,144,.95)' }); }
+      for (let i = 0; i < 3; i++) { const t = i * TAU / 3 + cang; g.bar(CX, CY, CX + rc * Math.cos(t), CY + rc * Math.sin(t), 13, { nopivot: true, fill: MM.tint('white', .95) }); }
       g.circle(CX, CY, rc, { dash: [4, 4], color: COL.faint, w: 0.8 });
       // planets
       for (let i = 0; i < 3; i++) {

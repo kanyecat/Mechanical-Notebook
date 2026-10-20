@@ -37,12 +37,12 @@
       // driver: disc with cut-away near pin
       const dp = [], cutW = 0.95, Rcut = 0.3 * C;
       for (let i = 0; i < 360; i++) { const t = i / 360 * TAU; const dd = Math.abs(wrap(t - s.phi)); const rho = dd < cutW ? Rcut + (Rl - Rcut) * Math.max(0, (dd - cutW + 0.12) / 0.12) : Rl; dp.push([DX + rho * Math.cos(t), DY + rho * Math.sin(t)]); }
-      g.poly(dp, { fill: 'rgba(31,85,144,.92)', hatch: { spacing: 4, cx: DX, cy: DY } });
+      g.poly(dp, { fill: MM.tint('white', .92), hatch: { spacing: 4, cx: DX, cy: DY } });
       const px = DX + r * Math.cos(s.phi), py = DY + r * Math.sin(s.phi);
       g.line(DX, DY, px, py, { w: 5, color: COL.faint });
       g.circle(DX, DY, 20, { fill: COL.white }); g.circle(DX, DY, 11, { fill: COL.ink });
-      g.circle(DX, DY, r, { dash: [5, 4], color: 'rgba(255,209,102,.6)', w: 1 });
-      g.dot(px, py, 8, COL.red); g.circle(px, py, 13, { color: 'rgba(255,209,102,.35)', w: 4 });
+      g.circle(DX, DY, r, { dash: [5, 4], color: MM.tint('red', .6), w: 1 });
+      g.dot(px, py, 8, COL.red); g.circle(px, py, 13, { color: MM.tint('red', .35), w: 4 });
       // labels
       const deg = v => String(Math.round(((v % 360) + 360) % 360)).padStart(3, '0') + '°';
       g.text('DRIVER  ' + deg(s.phi * 180 / Math.PI + 180), DX, DY + 262, { size: 15, align: 'center', weight: 700, font: 'Barlow Condensed,Arial Narrow,sans-serif' });

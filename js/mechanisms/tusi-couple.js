@@ -16,14 +16,14 @@
       g.style({ w: 1.6, fill: COL.paper }); g.gearPath(O[0], O[1], NR, M, -0.38 * SR, true); c.fill(); c.stroke();
       g.circle(O[0], O[1], RR, { dash: [4, 3], color: COL.faint, w: 0.8 });
       // paths: P on a straight diameter, E on an ellipse, gear centre on a circle
-      g.line(O[0] - RR - 6, O[1], O[0] + RR + 6, O[1], { w: 1.4, dash: [6, 4], color: 'rgba(255,209,102,.6)' });
+      g.line(O[0] - RR - 6, O[1], O[0] + RR + 6, O[1], { w: 1.4, dash: [6, 4], color: MM.tint('red', .6) });
       const ell = [], cir = []; for (let i = 0; i <= 120; i++) { const q = pts(i / 120 * TAU); ell.push(q.E); cir.push(q.G); }
       g.trace(ell, { color: COL.faint, w: 1, dash: [4, 4] }); g.trace(cir, { color: COL.faint, w: 0.8, dash: [2, 4] });
       // rolling gear (canvas angle = -world angle)
       const grot = a - 0.88 * SG;  // gear gap meets ring tooth at the contact point
       g.gear(s.G[0], s.G[1], NG, M, grot, { hatch: true, pitch: true });
       // carrier arm
-      g.bar(O[0], O[1], s.G[0], s.G[1], 16, { nopivot: true, fill: 'rgba(31,85,144,.95)' });
+      g.bar(O[0], O[1], s.G[0], s.G[1], 16, { nopivot: true, fill: MM.tint('white', .95) });
       g.pivot(O[0], O[1], 9); g.pivot(s.G[0], s.G[1], 7);
       g.line(s.G[0], s.G[1], s.P[0], s.P[1], { w: 1, color: COL.faint }); g.line(s.G[0], s.G[1], s.E[0], s.E[1], { w: 1, color: COL.faint });
       g.dot(s.E[0], s.E[1], 5, COL.ink); g.dot(s.P[0], s.P[1], 7, COL.red);

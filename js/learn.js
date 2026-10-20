@@ -84,6 +84,7 @@
         <div class="rl">${r.label}${r.live ? ' <i>live</i>' : ''}</div>
         <div class="rf">${r.sym ? `<em>${r.sym}</em> = ` : ''}${r.expr || ''}${r.sub ? `<span class="sub"> = ${r.sub}</span>` : ''}</div>
         <div class="rv">${typeof r.value === 'string' ? r.value : num(r.value, r.dp)}<small>${r.unit || ''}</small></div></div>`).join('');
+      if (window.MNGloss) MNGloss.apply(outs);
       if (full) checkChallenges(all);
     }
 
@@ -91,7 +92,7 @@
     let cur = null, score = [0, 0], tried = false;
     function newProblem() {
       cur = pick(def.problems)(); tried = false;
-      $('#ptext').innerHTML = cur.text; $('#punit').textContent = cur.unit || ''; $('#pans').value = ''; $('#pfb').textContent = ''; $('#pfb').className = 'fb'; $('#psteps').innerHTML = '';
+      $('#ptext').innerHTML = cur.text; if (window.MNGloss) MNGloss.apply($('#ptext')); $('#punit').textContent = cur.unit || ''; $('#pans').value = ''; $('#pfb').textContent = ''; $('#pfb').className = 'fb'; $('#psteps').innerHTML = '';
       if (cur.set) Object.entries(cur.set).forEach(([k, v]) => { const i = inputs.find(x => x.key === k); if (i && i.param) setInput(k, v); });
     }
     function showSteps() {
@@ -124,6 +125,7 @@
         return `<li class="${ok ? 'ok' : ''}"><div class="ct">${ok ? '✓ ' : ''}${c.title}</div><div class="cg">${c.goal}</div>${done.has(k) && !ok ? '<div class="cd">Solved earlier — you have changed the design since.</div>' : ''}<details><summary>Hint</summary>${c.hint}</details></li>`;
       }).join('');
       root.querySelectorAll('#chal details').forEach((d, k) => { if (open[k]) d.open = true; });
+      if (window.MNGloss) MNGloss.apply($('#chal'));
     }
 
     let frame = 0;

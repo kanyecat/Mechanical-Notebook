@@ -6,11 +6,7 @@
   const G = window.GEN = window.GEN || {};
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   G.LIST = [['gears', 'Gears'], ['linkages', 'Linkages'], ['cams', 'Cams']];
-  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } } };
-
-  // drawing theme: light drafting paper (default) or blueprint
-  const theme = store.get('mp-gen-theme') || 'paper';
-  document.documentElement.dataset.gtheme = theme;
+  // the colour theme (paper by default here, or blueprint) is shared with the rest of the site: see js/theme.js
 
   G.create = function (def) {
     const D = def.defaults, S = Object.assign({}, D), H = readHash();
@@ -35,6 +31,7 @@
               <p>All files are in millimetres.</p>
             </div></div>
         </div>
+        <span class="gtheme" data-theme-picker></span>
         <input type="file" id="gfile" accept=".json,application/json" hidden>
       </header>
       <main class="gwork">
@@ -53,10 +50,11 @@
             <i></i>
             <button id="gfit" title="Fit to view (F)">Fit</button>
             <button id="g100" title="True size on a 96 dpi screen (1)">1:1</button>
-            <button id="gtheme" title="Switch between drafting paper and blueprint">${theme === 'paper' ? 'Blueprint' : 'Paper'}</button>
-            <button id="ghelp" title="Shortcuts">?</button>
+            <button id="ghelp" class="gkeys" title="Keyboard shortcuts and mouse controls" aria-label="Keyboard shortcuts and controls" aria-expanded="false" aria-controls="ghelpbox"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 9.5h1M9.5 9.5h1M13 9.5h1M16.5 9.5h1M6 12.5h1M17 12.5h1M9 15h6"/></svg><span>Keys</span></button>
           </div>
-          <div class="ghelpbox" id="ghelpbox" hidden><b>Shortcuts</b><br>Space play / pause · F fit · 1 true size<br>G grid · C guides · L labels<br>Scroll to zoom, drag to pan, double-click to fit.<br>Drag a field name left or right to change its value.</div>
+          <div class="ghelpbox" id="ghelpbox" role="dialog" aria-label="Keyboard shortcuts and controls" hidden><b>Keyboard</b>
+            <dl><dt><kbd>Space</kbd></dt><dd>play / pause</dd><dt><kbd>F</kbd></dt><dd>fit to view</dd><dt><kbd>1</kbd></dt><dd>true size</dd><dt><kbd>G</kbd> <kbd>C</kbd> <kbd>L</kbd></dt><dd>grid, guides, labels</dd></dl>
+            <b>Mouse and touch</b><p>Scroll or pinch to zoom, drag to pan, double-click to fit.<br>Drag a field name left or right to change its value.</p></div>
           <div class="gstat"><span id="gxy">x — y —</span><span id="gscale"></span></div>
           <div class="gtoast" id="gtoast" role="status"></div>
         </div>
@@ -114,6 +112,7 @@
       note(html, o) { const p = document.createElement('p'); p.className = 'ghelp'; p.innerHTML = html; if (o && o.live) listeners.push(() => { p.innerHTML = o.live(S); }); ui._host.appendChild(p); return p; }
     };
     def.panel(ui, S);
+    if (window.MNGloss) ctl.querySelectorAll('.ghelp').forEach(p => MNGloss.apply(p));
 
     /* ---------- highlight: pointing at a control in Properties lights up its part on the drawing ---------- */
     let hl = null, hlTag = null;
@@ -140,6 +139,7 @@
       cards.innerHTML = rows.filter(r => r[2] !== 2).map(([k, v, w]) => `<div class="gcard${w ? ' warn' : ''}"><span>${k}</span><b>${v}</b></div>`).join('');
       const probs = rows.filter(r => r[2] && r[2] !== 'soft');   // 'soft' = highlight the value only
       warn.innerHTML = probs.length ? probs.map(([k, v]) => `<div><b>⚠ ${k}</b> ${v}</div>`).join('') : '<div class="ok">✓ No problems found</div>';
+      if (window.MNGloss) { MNGloss.apply(cards); MNGloss.apply(warn); }   // underlined terms show a plain-language definition
     };
     listeners.push(showInfo);
     listeners.forEach(f => f());
@@ -174,9 +174,11 @@
     const setPlay = v => { playing = v; play.textContent = playing ? '❚❚' : '▶'; play.classList.toggle('on', !playing); };
     play.onclick = () => setPlay(!playing);
     document.getElementById('grev').onclick = () => dir *= -1;
-    document.getElementById('gtheme').onclick = e => { const th = document.documentElement.dataset.gtheme === 'paper' ? 'blueprint' : 'paper'; document.documentElement.dataset.gtheme = th; store.set('mp-gen-theme', th); e.target.textContent = th === 'paper' ? 'Blueprint' : 'Paper'; dirty = true; };
+    if (window.MNTheme) MNTheme.scan(app);
+    window.addEventListener('mn-theme', () => { dirty = true; });
     const helpBox = document.getElementById('ghelpbox');
-    document.getElementById('ghelp').onclick = () => helpBox.hidden = !helpBox.hidden;
+    const helpB = document.getElementById('ghelp');
+    helpB.onclick = () => { helpBox.hidden = !helpBox.hidden; helpB.classList.toggle('on', !helpBox.hidden); helpB.setAttribute('aria-expanded', !helpBox.hidden); };
     document.addEventListener('keydown', e => {
       if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
       const k = e.key.toLowerCase();
