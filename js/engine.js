@@ -1,7 +1,8 @@
 /* Mechanisms engine: drawing helpers, animation loop, graph, page mounting */
 (function () {
   const TAU = Math.PI * 2;
-  const COL = { ink: '#14213a', red: '#d63a2a', paper: '#efebe0', white: '#fbf9f2', faint: 'rgba(20,33,58,.45)', hatch: 'rgba(20,33,58,.38)', blue: '#2a5d9f' };
+  /* Blueprint palette. Names kept from the paper version: ink = line colour, red = accent (amber), white = part fill. */
+  const COL = { ink: '#eef5ff', red: '#ffd166', paper: '#1b4b82', white: '#1f5590', faint: 'rgba(238,245,255,.55)', hatch: 'rgba(238,245,255,.32)', blue: '#8fd3ff' };
   const MM = { registry: {}, TAU, COL };
   MM.register = function (m) { MM.registry[m.slug] = m; };
   MM.cat = () => window.MM_CATALOG.filter(c => MM.registry[c.slug]);
@@ -155,48 +156,80 @@
   };
 
   /* ---------- page mount ---------- */
+  // mechanisms that have a generator page, with starting settings
+  const MAKE = { 'spur-gears': ['gears'], 'rack-pinion': ['gears', { type: 'rack' }], 'four-bar': ['linkages'], 'slider-crank': ['linkages', { kind: 'slider' }], 'cam-follower': ['cams'] };
   MM.mount = function (slug) {
     const m = MM.registry[slug], cat = MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
     const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length];
-    document.title = meta.name + ' · Mechanisms';
+    document.title = meta.name + ' · Moving Parts';
     const params = m.params || []; const P = {}; params.forEach(q => P[q.key] = q.value);
+    const fmt = (q, v) => (q.step < 1 ? (+v).toFixed(q.step < 0.1 ? 2 : 1) : String(v)) + (q.unit || '');
+    const paramHTML = q => q.options
+      ? `<div class="param"><span class="plabel">${q.label}</span><div class="seg" data-seg="${q.key}">${q.options.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === q.value ? 'on' : ''}">${l}</button>`).join('')}</div></div>`
+      : `<label class="param"><span class="plabel">${q.label}</span><input data-k="${q.key}" type="range" min="${q.min}" max="${q.max}" step="${q.step}" value="${q.value}"><output data-o="${q.key}">${fmt(q, q.value)}</output></label>`;
     const root = document.getElementById('app');
     root.innerHTML = `
-    <div class="topbar"><a href="../index.html">← All mechanisms</a><span>Mechanisms ${meta.num}</span><a href="${next.slug}.html">Next →</a></div>
-    <div class="kicker">Mechanisms ${meta.num}</div>
-    <h1 class="title">${meta.name}</h1>
+    <div class="topbar"><a href="../index.html">← All mechanisms</a><span>${meta.category}</span><a href="${next.slug}.html">Next →</a></div>
+    <header class="phead">
+      <div class="kicker">No. ${meta.num}</div>
+      <h1 class="title">${meta.name}</h1>
+      <p class="lede">${meta.fn}</p>
+    </header>
     <div class="stage">
-      <div><canvas id="main"></canvas>
+      <section class="box drawing">
+        <canvas id="main"></canvas>
         <div class="controls">
-          <button id="play">Pause</button>
-          <label>Speed <input id="speed" type="range" min="0.1" max="3" step="0.05" value="1"></label>
-          <label>Angle <input id="scrub" type="range" min="0" max="360" step="1" value="0"></label>
-          <button id="rev">Reverse</button>
-          ${params.map(q => `<label class="param">${q.label} <input data-k="${q.key}" type="range" min="${q.min}" max="${q.max}" step="${q.step}" value="${q.value}"></label>`).join('')}
+          <button id="play" type="button">Pause</button>
+          <button id="rev" type="button" class="ghost">Reverse</button>
+          <label>Speed <input id="speed" type="range" min="0.1" max="3" step="0.05" value="1"><output id="speedv">1.0×</output></label>
+          <label>Angle <input id="scrub" type="range" min="0" max="360" step="1" value="0"><output id="angv">0°</output></label>
         </div>
-      </div>
-      <div class="panel notes"><h3>Notes</h3><ol>${meta.notes.map(n => `<li>${n}</li>`).join('')}</ol>
-        <div class="readout"><h3>Motion</h3><div id="ro">&nbsp;</div></div></div>
+        ${params.length ? `<div class="adjust"><h3>Adjust the design</h3>${params.map(paramHTML).join('')}</div>` : ''}
+      </section>
+      <aside class="side">
+        <div class="box now"><h3>Right now</h3><div id="ro">&nbsp;</div></div>
+        <div class="box notes"><h3>How it works</h3><ol>${meta.notes.map(n => `<li>${n}</li>`).join('')}</ol></div>
+        <div class="box used"><h3>${meta.knownLabel || 'Used in'}</h3><p>${meta.used}</p></div>
+        ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
+      </aside>
     </div>
-    <div class="graphwrap"><canvas id="graph"></canvas></div>
+    ${m.graph ? `<section class="box graphbox"><h3>Motion graph</h3><canvas id="graph"></canvas><p class="hint">The marker follows the drawing. Drag the angle slider to step through one cycle.</p></section>` : ''}
+    ${MM.math && MM.math[slug] ? '<section class="box mathbox"><h3>Do the math</h3><div id="learn"></div></section>' : ''}
     <div class="titleblock">
-      <div><small>Function</small>${meta.fn}</div><div class="brand">Mechanism<span>s</span></div>
-      <div><small>${meta.knownLabel || 'Used in'}</small>${meta.used}</div><div><small>Dwg no.</small><div class="dwg">M-${meta.num}</div></div>
+      <div><small>Category</small>${meta.category}</div><div><small>Sheet</small>${idx + 1} of ${cat.length}</div>
+      <div class="brand">Moving&nbsp;<span>Parts</span></div><div><small>Dwg no.</small><div class="dwg">M-${meta.num}</div></div>
     </div>
     <div class="pager"><a href="${prev.slug}.html">← ${prev.name}</a><a href="${next.slug}.html">${next.name} →</a></div>`;
     const cv = document.getElementById('main'), gc = document.getElementById('graph');
-    let a = 0, playing = true, dir = 1, speed = 1, last = performance.now(), scrubbing = false;
+    let a = 0, playing = true, dir = 1, speed = 1, last = performance.now();
     const play = document.getElementById('play'), sp = document.getElementById('speed'), sc = document.getElementById('scrub'), ro = document.getElementById('ro');
+    const spv = document.getElementById('speedv'), angv = document.getElementById('angv');
     const period = m.period || TAU;
-    play.onclick = () => { playing = !playing; play.textContent = playing ? 'Pause' : 'Play'; };
+    const setPlaying = v => { playing = v; play.textContent = playing ? 'Pause' : 'Play'; };
+    play.onclick = () => setPlaying(!playing);
     document.getElementById('rev').onclick = () => dir *= -1;
-    sp.oninput = () => speed = +sp.value;
-    sc.oninput = () => { a = +sc.value / 360 * period; playing = false; play.textContent = 'Play'; };
-    root.querySelectorAll('[data-k]').forEach(el => el.oninput = () => { P[el.dataset.k] = +el.value; });
+    sp.oninput = () => { speed = +sp.value; spv.textContent = speed.toFixed(1) + '×'; };
+    sc.oninput = () => { a = +sc.value / 360 * period; setPlaying(false); };
+    let learn = null;
+    // set a design value from anywhere (slider, option buttons, calculator) and keep every control in step
+    function setParam(key, v, from) {
+      const q = params.find(x => x.key === key); if (!q) return;
+      v = Math.min(q.max, Math.max(q.min, Math.round((+v - q.min) / q.step) * q.step + q.min)); v = +v.toFixed(6); P[key] = v;
+      const sl = root.querySelector(`[data-k="${key}"]`); if (sl) { sl.value = v; root.querySelector(`[data-o="${key}"]`).textContent = fmt(q, v); }
+      const seg = root.querySelector(`[data-seg="${key}"]`); if (seg) seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
+      if (learn && from !== 'learn') learn.paramChanged(key, v);
+    }
+    root.querySelectorAll('[data-k]').forEach(el => el.oninput = () => setParam(el.dataset.k, el.value));
+    root.querySelectorAll('[data-seg]').forEach(seg => seg.onclick = e => { const b = e.target.closest('button'); if (b) setParam(seg.dataset.seg, b.dataset.v); });
+    const lh = document.getElementById('learn');
+    if (lh && MM.learn) learn = MM.learn(lh, slug, { m, P, setParam: (k, v) => setParam(k, v, 'learn'), getAngle: () => a });
+    document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); setPlaying(!playing); } });
     function render() {
-      MM.frame(cv, m, a, P); MM.graphFrame(gc, m, a, P);
-      const r = m.graph && m.graph.readout ? m.graph.readout(a, P) : null; if (r) ro.innerHTML = `<b>${r.big}</b>${r.small}`;
-      sc.value = ((a % period) + period) % period / period * 360;
+      MM.frame(cv, m, a, P); if (gc) MM.graphFrame(gc, m, a, P);
+      const r = m.graph && m.graph.readout ? m.graph.readout(a, P) : null; if (r) ro.innerHTML = `<b>${r.big}</b><span>${r.small}</span>`;
+      const deg = ((a % period) + period) % period / period * 360;
+      sc.value = deg; angv.textContent = Math.round(deg) + '°';
+      if (learn) learn.tick(a);
     }
     function tick(now) {
       const dt = Math.min((now - last) / 1000, 0.05); last = now;
@@ -212,7 +245,7 @@
     const cat = MM.cat(), grid = document.getElementById('grid'), fl = document.getElementById('filters');
     const cats = ['All'].concat([...new Set(cat.map(c => c.category))]); let cur = 'All';
     fl.innerHTML = cats.map(c => `<button data-c="${c}" class="${c === 'All' ? 'on' : ''}">${c}</button>`).join('');
-    grid.innerHTML = cat.map(c => `<a class="card" data-c="${c.category}" href="pages/${c.slug}.html"><canvas data-s="${c.slug}"></canvas><div class="meta"><div class="num">MECHANISMS ${c.num}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div></div></a>`).join('');
+    grid.innerHTML = cat.map(c => `<a class="card" data-c="${c.category}" href="pages/${c.slug}.html"><canvas data-s="${c.slug}"></canvas><div class="meta"><div class="num">NO. ${c.num}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div></div></a>`).join('');
     fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; cur = b.dataset.c; fl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); grid.querySelectorAll('.card').forEach(k => k.style.display = (cur === 'All' || k.dataset.c === cur) ? '' : 'none'); };
     const hover = new Map(); const cvs = [...grid.querySelectorAll('canvas')];
     const params = m => { const P = {}; (m.params || []).forEach(q => P[q.key] = q.value); return P; };
