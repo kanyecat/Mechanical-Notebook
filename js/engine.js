@@ -161,7 +161,7 @@
   MM.mount = function (slug) {
     const m = MM.registry[slug], cat = MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
     const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length];
-    document.title = meta.name + ' · Moving Parts';
+    document.title = meta.name + ' · Mechanical Notebook';
     const params = m.params || []; const P = {}; params.forEach(q => P[q.key] = q.value);
     const fmt = (q, v) => (q.step < 1 ? (+v).toFixed(q.step < 0.1 ? 2 : 1) : String(v)) + (q.unit || '');
     const paramHTML = q => q.options
@@ -197,7 +197,7 @@
     ${MM.math && MM.math[slug] ? '<section class="box mathbox"><h3>Do the math</h3><div id="learn"></div></section>' : ''}
     <div class="titleblock">
       <div><small>Category</small>${meta.category}</div><div><small>Sheet</small>${idx + 1} of ${cat.length}</div>
-      <div class="brand">Moving&nbsp;<span>Parts</span></div><div><small>Dwg no.</small><div class="dwg">M-${meta.num}</div></div>
+      <div class="brand">Mechanical&nbsp;<span>Notebook</span></div><div><small>Dwg no.</small><div class="dwg">M-${meta.num}</div></div>
     </div>
     <div class="pager"><a href="${prev.slug}.html">← ${prev.name}</a><a href="${next.slug}.html">${next.name} →</a></div>`;
     const cv = document.getElementById('main'), gc = document.getElementById('graph');

@@ -1,4 +1,4 @@
-/* Moving Parts generators: geometry helpers and exporters (SVG, DXF, STL). MIT licence.
+/* Mechanical Notebook generators: geometry helpers and exporters (SVG, DXF, STL). MIT licence.
    A "shape" is { outer: [[x,y],...], holes: [[[x,y],...], ...], circles: [{x,y,r}] } in millimetres, y up.
    A "part" is { name, shapes: [shape], curves: [[[x,y],...]], thickness } already placed in world coordinates. */
 (function () {
@@ -83,7 +83,7 @@
     const b = G.bounds(parts), pad = 5, W = b.x1 - b.x0 + 2 * pad, H = b.y1 - b.y0 + 2 * pad;
     const tx = x => r4(x - b.x0 + pad), ty = y => r4(b.y1 + pad - y);  // flip so y points down in SVG
     const path = p => 'M' + p.map(([x, y]) => tx(x) + ' ' + ty(y)).join('L') + 'Z';
-    let out = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Made with Moving Parts generators (MIT). Units: millimetres. -->\n<svg xmlns="http://www.w3.org/2000/svg" width="${r4(W)}mm" height="${r4(H)}mm" viewBox="0 0 ${r4(W)} ${r4(H)}" fill="none" stroke="#000" stroke-width="0.1">\n`;
+    let out = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Made with Mechanical Notebook generators (MIT). Units: millimetres. -->\n<svg xmlns="http://www.w3.org/2000/svg" width="${r4(W)}mm" height="${r4(H)}mm" viewBox="0 0 ${r4(W)} ${r4(H)}" fill="none" stroke="#000" stroke-width="0.1">\n`;
     parts.forEach(p => {
       out += `  <g id="${p.name.replace(/[^\w-]/g, '_')}">\n`;
       p.shapes.forEach(s => {
@@ -136,7 +136,7 @@
       });
     });
     const buf = new ArrayBuffer(84 + tris.length * 50), dv = new DataView(buf);
-    const head = 'Moving Parts generator (MIT) - units mm'; for (let i = 0; i < head.length; i++) dv.setUint8(i, head.charCodeAt(i));
+    const head = 'Mechanical Notebook (MIT) - units mm'; for (let i = 0; i < head.length; i++) dv.setUint8(i, head.charCodeAt(i));
     dv.setUint32(80, tris.length, true);
     tris.forEach((t, k) => {
       const o = 84 + k * 50, [a, b, c] = t, u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];

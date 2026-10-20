@@ -1,4 +1,4 @@
-/* Moving Parts generators: workspace shell (top bar, drawing canvas, inspector, results), animation, save/share/export. MIT licence.
+/* Mechanical Notebook generators: workspace shell (top bar, drawing canvas, inspector, results), animation, save/share/export. MIT licence.
    A generator calls GEN.create({ id, title, defaults, panel(ui, S), model(S, t), info(S), exportParts(S, layout), fileTag(S) }).
      model(S, t) returns { parts: [{ name, shapes, curves, thickness, fill }], guides(d) } in world mm, y up, posed for time t.
      info(S) returns rows [label, value, warn]. Rows with warn = true are listed as problems. */
@@ -19,7 +19,7 @@
     const app = document.getElementById('gen');
     app.innerHTML = `
       <header class="gbar">
-        <a class="gbrand" href="../index.html" title="Back to all mechanisms">Moving <b>Parts</b></a>
+        <a class="gbrand" href="../index.html" title="Back to all mechanisms">Mechanical <b>Notebook</b></a>
         <nav class="gtabs">${G.LIST.map(([id, name]) => `<a href="${id}.html" class="${id === def.id ? 'on' : ''}">${name}</a>`).join('')}</nav>
         <div class="gacts">
           <button id="gopen" title="Open a saved design (.json)">Open</button>

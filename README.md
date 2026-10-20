@@ -1,4 +1,4 @@
-# Moving Parts
+# Mechanical Notebook
 
 How machines move, and the math behind them. A free, open-source collection of animated mechanisms with
 live calculators, practice problems and design challenges, plus generators that turn a design into files
