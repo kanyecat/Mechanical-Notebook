@@ -30,6 +30,7 @@ const nav = (p, here) => `<a class="skip" href="#app">Skip to content</a>
         <a href="${p}generators/linkages.html"><b>Linkage generator</b><span>Four-bar, slider crank, multi-link</span></a>
         <a href="${p}generators/cams.html"><b>Cam generator</b><span>Motion programs, followers, checks</span></a>
         <a href="${p}generators/pulleys.html"><b>Pulley generator</b><span>Belt drives, idlers, lifting tackle</span></a>
+        <a href="${p}generators/chains.html"><b>Chain and sprocket generator</b><span>Roller chain, sprockets, multi-stage drives</span></a>
       </div></div>
     <a href="${p}about.html"${here === 'a' ? ' aria-current="page"' : ''}>About</a>
   </nav>
@@ -43,7 +44,7 @@ const foot = p => `<footer class="foot"><div class="footin">
     <p class="fsmall">Made by Joo Hee Kim · <a href="${p}about.html">About this site</a></p></div>
   <div class="fcol"><h4>Explore</h4>
     <a href="${p}index.html#mechanisms">Mechanisms</a><a href="${p}index.html#elements">Mechanical elements</a>
-    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a></div>
+    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a><a href="${p}generators/chains.html">Chain generator</a></div>
   <div class="fcol"><h4>Project</h4>
     <a href="${REPO}" rel="noopener">Source code on GitHub</a><span>Free and open source (MIT licence)</span>
     <span>Inspired by <i>507 Mechanical Movements</i> by Henry T. Brown (1868)</span><span>Visits are counted with Google Analytics</span></div>
@@ -68,7 +69,8 @@ const gens = [
   ['gears', 'spur-gears', 'Gear generator', 'Spur gears, ring gears and racks with true involute teeth. Connect as many gears as you like into a train and watch them turn.'],
   ['linkages', 'four-bar', 'Linkage generator', 'Four-bar and slider-crank linkages, or build your own multi-link mechanism and trace the path of any point.'],
   ['cams', 'cam-follower', 'Cam generator', 'Program a motion step by step, choose a follower, and check the pressure angle and undercut before you cut.'],
-  ['pulleys', 'belt-pulleys', 'Pulley generator', 'Place pulleys anywhere, join them with belts and hang loads on them, or rig a block and tackle. See speeds, grip and whether it can lift.']
+  ['pulleys', 'belt-pulleys', 'Pulley generator', 'Place pulleys anywhere, join them with belts and hang loads on them, or rig a block and tackle. See speeds, grip and whether it can lift.'],
+  ['chains', 'roller-chain', 'Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes. Place sprockets anywhere, run several chains, pick skeleton or swirl sprockets and cut every part.']
 ];
 fs.writeFileSync(R('index.html'), head('Mechanical Notebook: how machines move, and the math behind them', '', null, '') + nav('', 'h') + `
 <main class="sheet home" id="app">
@@ -93,7 +95,7 @@ fs.writeFileSync(R('index.html'), head('Mechanical Notebook: how machines move, 
       <a class="gencard" href="generators/${id}.html"><div class="gprev"><canvas data-s="${s}" data-live data-box aria-hidden="true"></canvas></div>
         <div class="gtext"><h3>${t}</h3><p>${d}</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the ${t.split(' ')[0].toLowerCase()} generator →</span></div></a>`).join('')}
     </div>
-    <p class="soonline">More generators (springs, Geneva drives, chains and sprockets) are on the way.</p>
+    <p class="soonline">More generators (springs, Geneva drives, and more) are on the way.</p>
   </section>
 
   <section id="mechanisms" class="sec">
@@ -114,10 +116,11 @@ fs.writeFileSync(R('about.html'), head('About · Mechanical Notebook', '', 'Who 
   <header class="phead"><div class="kicker">About</div><h1 class="title">A notebook of moving parts</h1>
     <p class="lede">Mechanical Notebook is a free, open-source place to see how machines move, play with them, and learn the math behind them.</p></header>
   <div class="aboutgrid" data-gloss>
-    <section class="box"><h3>Why I made it</h3>
-      <p>I love finding out how things move. A gear train, a cam or a linkage can turn one simple motion into something surprising, and once you see how it works you start noticing it everywhere: in clocks, toys, bicycles, engines and even in animals.</p>
-      <p>Most references show these mechanisms as still drawings, or as finished animations you can only watch. I wanted a notebook where you can change a length or a tooth count and immediately see what happens, then check the numbers yourself. When an idea is ready to build, the generators turn it into files for a laser cutter, a CNC machine or a 3D printer.</p></section>
+    <section class="box"><h3>Why it was made</h3>
+      <p>This website was created out of a love for finding out how things move. A gear train, a cam or a linkage can turn one simple motion into something surprising, and once you see how it works you start noticing it everywhere: in clocks, toys, bicycles, engines and even in animals.</p>
+      <p>Most references show these mechanisms as still drawings, or as finished animations you can only watch. This notebook is meant to let visitors change a length or a tooth count, immediately see what happens, and then check the numbers themselves. When an idea is ready to build, the generators turn it into files for a laser cutter, a CNC machine or a 3D printer.</p></section>
     <section class="box"><h3>Who it is for</h3>
+      <p>This website is for:</p>
       <ul class="who">
         <li><b>Anyone curious</b> about how movements are created, with no engineering background needed. Hover the underlined words for plain-language definitions.</li>
         <li><b>Students</b> who want to see the math come alive, with worked practice problems and design challenges.</li>
@@ -125,15 +128,15 @@ fs.writeFileSync(R('about.html'), head('About · Mechanical Notebook', '', 'Who 
         <li><b>Engineers</b> who want a quick, free tool to sketch a mechanism, check it and export it.</li>
       </ul></section>
     <section class="box"><h3>Who made it</h3>
-      <p>Hi, I'm <b>Joo Hee Kim</b>. I studied at Carnegie Mellon University, where I earned a Bachelor of Engineering Studies and Arts (BESA) in Mechanical Engineering and Art, with a minor in Physical Computing.</p>
-      <p>Mechanical Notebook brings those two sides together: the precision of engineering and the clear, hands-on way an artist explains things.</p>
+      <p>This website was created by <b>Joo Hee Kim</b>. Joo Hee studied at Carnegie Mellon University, where she earned a Bachelor of Engineering Studies and Arts (BESA) in Mechanical Engineering and Art, with a minor in Physical Computing.</p>
+      <p>The site brings those two sides together: the precision of engineering and the clear, hands-on way an artist explains things.</p>
       <p>Portfolio: <a href="https://www.jooheekim.art" target="_blank" rel="noopener">jooheekim.art</a></p>
     </section>
     <section class="box"><h3>How it is made</h3>
       <p>Every drawing is calculated live in your browser with plain HTML, CSS and JavaScript. There are no accounts and nothing to install. The code is open source under the MIT licence, so you are free to learn from it, use it and improve it.</p>
       <p>The site is inspired by Henry T. Brown's <i>507 Mechanical Movements</i> (1868). All explanations and drawings here are original.</p></section>
   </div>
-  <section class="box comingbox"><h3>Coming next</h3><p>More mechanisms, more mechanical elements and more generators are on the way. Have an idea or found a mistake? Send me an email at <a href="mailto:jooheeki@alumni.cmu.edu">jooheeki@alumni.cmu.edu</a>.</p></section>
+  <section class="box comingbox"><h3>Coming next</h3><p>More mechanisms, more mechanical elements and more generators are on the way. Have an idea or found a mistake? Send Joo Hee an email at <a href="mailto:jooheeki@alumni.cmu.edu">jooheeki@alumni.cmu.edu</a>.</p></section>
 </main>` + foot('') + tail(''));
 
 console.log('built', mech.length, 'mechanisms,', elems.length, 'elements, index.html, about.html');

@@ -16,7 +16,7 @@
   });
   G.bounds = parts => {
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; const add = ([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
-    parts.forEach(p => { (p.shapes || []).forEach(s => { s.outer.forEach(add); (s.circles || []).forEach(c => { add([c.x - c.r, c.y - c.r]); add([c.x + c.r, c.y + c.r]); }); }); (p.curves || []).forEach(c => c.forEach(add)); });
+    parts.forEach(p => { (p.shapes || []).forEach(s => { s.outer.forEach(add); (s.circles || []).forEach(c => { add([c.x - c.r, c.y - c.r]); add([c.x + c.r, c.y + c.r]); }); }); (p.curves || []).forEach(c => c.forEach(add)); (p.lines || []).forEach(c => c.forEach(add)); });
     return x0 > x1 ? { x0: -50, y0: -50, x1: 50, y1: 50 } : { x0, y0, x1, y1 };
   };
 
@@ -76,6 +76,15 @@
   };
 
 
+  /* ---------- convex hull (monotone chain), counter-clockwise ---------- */
+  G.hull = function (pts) {
+    const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    p.forEach(q => { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); });
+    p.slice().reverse().forEach(q => { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); });
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  };
+
   /* ---------- rounding: cut every sharp corner of a closed outline back and bridge it with a curve of radius r ---------- */
   // round the sharp corners of a closed outline with radius r (by cutting each corner back along the outline and bridging with a curve)
   G.fillet = function (pts, r) {
@@ -104,6 +113,49 @@
       else if (!skip[i]) out.push(pts[i]);
     }
     return out;
+  };
+
+  /* ---------- pockets in gear and sprocket bodies ---------- */
+  const arcPts = (cx, cy, r, a0, a1) => { const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / (6 * Math.PI / 180))), o = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; o.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } return o; };
+  const TAU = Math.PI * 2;
+  // rounded outline of pockets cut between hub and rim: design 'holes' | 'teardrop' | 'spokes' | 'swirl'
+  G.pockets = function (design, n, rIn, rOut, web, crn, sweep) {
+    const out = [], circles = [];
+    if (!(rOut - rIn > 3) || n < 2) return { holes: out, circles };
+    const arc = (r, a0, a1) => arcPts(0, 0, r, a0, a1);
+    for (let j = 0; j < n; j++) {
+      const c = j * TAU / n;
+      if (design === 'holes') {
+        const rm = (rIn + rOut) / 2, dia = Math.min(rOut - rIn, 2 * rm * Math.sin(Math.PI / n) - web); if (dia < 2) return { holes: [], circles: [] };
+        circles.push({ x: rm * Math.cos(c), y: rm * Math.sin(c), r: dia / 2 });
+      } else if (design === 'teardrop') {
+        let rb = (rOut - rIn) * 0.4; for (let i = 0; i < 6; i++) { const rO = rOut - rb; rb = Math.min(rO * Math.sin(Math.PI / n) - web / 2, (rOut - rIn) * 0.45); }
+        if (rb < 1.5) return { holes: [], circles: [] };
+        const rs = Math.max(1, rb * 0.32), rO = rOut - rb, rS = rIn + rs;
+        const hp = G.hull(G.circlePts(rO, 0, rb, 28).concat(G.circlePts(rS, 0, rs, 16)));
+        out.push(G.xform(hp, 0, 0, c));
+      } else {
+        // between two spokes of width `web`; swirl bends the spokes by `sweep`
+        const sw = design === 'swirl' ? sweep : 0, N = 18, lo = [], hi = [], a0 = c, a1 = c + TAU / n;
+        for (let i = 0; i <= N; i++) {
+          const u = i / N, r = rIn + (rOut - rIn) * u, off = Math.asin(Math.min(0.99, web / 2 / r)), tw = sw * u;
+          lo.push([r * Math.cos(a0 + off + tw), r * Math.sin(a0 + off + tw)]); hi.push([r * Math.cos(a1 - off + tw), r * Math.sin(a1 - off + tw)]);
+        }
+        const oA = Math.atan2(lo[N][1], lo[N][0]), oB = Math.atan2(hi[N][1], hi[N][0]), iA = Math.atan2(lo[0][1], lo[0][0]), iB = Math.atan2(hi[0][1], hi[0][0]);
+        const fix = (a, b) => { while (b < a) b += TAU; return b; };
+        let poly = lo.concat(arc(rOut, oA, fix(oA, oB)).slice(1, -1), hi.slice().reverse(), arc(rIn, iB, iB - (fix(iA, iB) - iA)).slice(1, -1));
+        if (poly.length < 6 || Math.abs(G.area(poly)) < 4) continue;
+        out.push(G.fillet(poly, crn));
+      }
+    }
+    return { holes: out, circles };
+  };
+
+  G.boreShape = function (r, key) {   // a round bore, or one with a keyway cut on +x
+    if (!key) return { circles: r > 0 ? [{ x: 0, y: 0, r }] : [], holes: [] };
+    const kw = Math.max(1.5, Math.round(r * 2 / 4 * 2) / 2), kd = Math.max(0.8, kw * 0.45), t = Math.asin(Math.min(0.95, kw / 2 / r)), pts = arcPts(0, 0, r, t, TAU - t);
+    pts.push([r * Math.cos(t) + kd, -kw / 2], [r * Math.cos(t) + kd, kw / 2]);
+    return { circles: [], holes: [pts] };
   };
 
   /* ---------- nesting: pack parts close together for laser cutting ----------
@@ -180,6 +232,85 @@
     return out.concat(skipped);
   };
 
+
+  /* ---------- labels: a single-stroke vector font, part IDs etched on each part and a legend, so look-alike parts can be told apart ---------- */
+  const GL = {};
+  (function () {
+    const def = (ch, str) => { GL[ch] = str.split(';').map(st => st.trim().split(',').map(q => q.trim().split(/\s+/).map(Number))); };
+    def('A', '0 0,0 4,2 6,4 4,4 0;0 3,4 3'); def('B', '0 0,0 6,3 6,4 5,4 4,3 3,0 3;3 3,4 2,4 1,3 0,0 0'); def('C', '4 1,3 0,1 0,0 1,0 5,1 6,3 6,4 5');
+    def('D', '0 0,0 6,2 6,4 4,4 2,2 0,0 0'); def('E', '4 0,0 0,0 6,4 6;0 3,3 3'); def('F', '0 0,0 6,4 6;0 3,3 3');
+    def('G', '4 5,3 6,1 6,0 5,0 1,1 0,3 0,4 1,4 3,2 3'); def('H', '0 0,0 6;4 0,4 6;0 3,4 3'); def('I', '1 0,3 0;2 0,2 6;1 6,3 6');
+    def('J', '4 6,4 1,3 0,1 0,0 1'); def('K', '0 0,0 6;4 6,0 3,4 0'); def('L', '0 6,0 0,4 0'); def('M', '0 0,0 6,2 3,4 6,4 0'); def('N', '0 0,0 6,4 0,4 6');
+    def('O', '1 0,0 1,0 5,1 6,3 6,4 5,4 1,3 0,1 0'); def('P', '0 0,0 6,3 6,4 5,4 4,3 3,0 3'); def('Q', '1 0,0 1,0 5,1 6,3 6,4 5,4 1,3 0,1 0;2 2,4 0');
+    def('R', '0 0,0 6,3 6,4 5,4 4,3 3,0 3;2 3,4 0'); def('S', '4 5,3 6,1 6,0 5,0 4,1 3,3 3,4 2,4 1,3 0,1 0,0 1'); def('T', '0 6,4 6;2 6,2 0');
+    def('U', '0 6,0 1,1 0,3 0,4 1,4 6'); def('V', '0 6,2 0,4 6'); def('W', '0 6,1 0,2 3,3 0,4 6'); def('X', '0 0,4 6;0 6,4 0'); def('Y', '0 6,2 3,4 6;2 3,2 0'); def('Z', '0 6,4 6,0 0,4 0');
+    def('0', '1 0,0 1,0 5,1 6,3 6,4 5,4 1,3 0,1 0;1 1,3 5'); def('1', '1 5,2 6,2 0;1 0,3 0'); def('2', '0 5,1 6,3 6,4 5,4 4,0 0,4 0');
+    def('3', '0 5,1 6,3 6,4 5,4 4,3 3,1 3;3 3,4 2,4 1,3 0,1 0,0 1'); def('4', '3 0,3 6,0 2,4 2'); def('5', '4 6,0 6,0 3,3 3,4 2,4 1,3 0,1 0,0 1');
+    def('6', '4 5,3 6,1 6,0 5,0 1,1 0,3 0,4 1,4 2,3 3,0 3'); def('7', '0 6,4 6,1 0');
+    def('8', '1 3,0 4,0 5,1 6,3 6,4 5,4 4,3 3,1 3,0 2,0 1,1 0,3 0,4 1,4 2,3 3'); def('9', '0 1,1 0,3 0,4 1,4 5,3 6,1 6,0 5,0 4,1 3,4 3');
+    def('.', '1.7 0,2.3 0,2.3 0.6,1.7 0.6,1.7 0'); def('-', '0.5 3,3.5 3'); def('+', '0.5 3,3.5 3;2 1.5,2 4.5'); def('=', '0.5 2,3.5 2;0.5 4,3.5 4');
+    def('/', '0 0,4 6'); def(':', '1.7 1,2.3 1,2.3 1.6,1.7 1.6,1.7 1;1.7 4,2.3 4,2.3 4.6,1.7 4.6,1.7 4'); def('(', '3 0,1.5 1.5,1.5 4.5,3 6'); def(')', '1 0,2.5 1.5,2.5 4.5,1 6');
+    def('°', '1 4.5,1 6,2.8 6,2.8 4.5,1 4.5'); def('Ø', '1 0,0 1,0 5,1 6,3 6,4 5,4 1,3 0,1 0;0 0,4 6'); def(',', '2 0.8,2 0,1.4 -1'); def('%', '0 0,4 6;0.4 5,0.4 6,1.4 6,1.4 5,0.4 5;2.6 0,2.6 1,3.6 1,3.6 0,2.6 0');
+  })();
+  const ALIAS = { '×': 'X', '·': '.', 'ø': 'Ø', '–': '-', '—': '-', '#': 'N', '_': '-', '[': '(', ']': ')', '×': 'X' };
+  const textW = (str, h) => Math.max(0, str.length * 5 * h / 6 - h / 6);
+  // polylines for a string, lower-left at (x, y), cap height h (mm)
+  G.strokeText = function (str, x, y, h) {
+    const k = h / 6, out = []; let cx = x;
+    for (const raw of String(str)) {
+      let ch = ALIAS[raw] || raw; ch = ch.length === 1 ? ch.toUpperCase() : ch; const g = GL[ch] || GL[ALIAS[ch]];
+      if (g) g.forEach(st => out.push(st.map(([u, v]) => [cx + u * k, y + v * k])));
+      cx += 5 * k;
+    }
+    return out;
+  };
+  const inPoly = (pt, ring) => { let c = false; const [x, y] = pt; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const rectPts = (x, y, w, h, n) => { const P = []; for (let i = 0; i <= n; i++) { const u = i / n; P.push([x + w * u, y], [x + w * u, y + h], [x, y + h * u], [x + w, y + h * u]); } P.push([x + w / 2, y + h / 2]); return P; };
+  // find where a label of width w and height h fits inside the part: on material, clear of every hole and of the outline
+  function findSpot(p, w, h) {
+    const mg = 0.8; let best = null;
+    p.shapes.forEach(s => {
+      const bb = G.bounds([{ shapes: [{ outer: s.outer }] }]), cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2, step = Math.max(0.8, h / 2.5);
+      const holes = s.holes || [], circles = s.circles || [];
+      for (let x = bb.x0; x <= bb.x1 - w; x += step) for (let y = bb.y0; y <= bb.y1 - h; y += step) {
+        const X = x - mg, Y = y - mg, W = w + 2 * mg, H = h + 2 * mg, pts = rectPts(X, Y, W, H, 6);
+        if (!pts.every(q => inPoly(q, s.outer))) continue;
+        if (s.outer.some(([a, b]) => a > X && a < X + W && b > Y && b < Y + H)) continue;
+        if (holes.some(r => pts.some(q => inPoly(q, r)) || r.some(([a, b]) => a > X && a < X + W && b > Y && b < Y + H))) continue;
+        if (circles.some(c => { const nx = Math.min(Math.max(c.x, X), X + W), ny = Math.min(Math.max(c.y, Y), Y + H); return Math.hypot(nx - c.x, ny - c.y) < c.r; })) continue;
+        const d = Math.hypot(x + w / 2 - cx, y + h / 2 - cy);
+        if (!best || d < best.d) best = { x, y, d };
+      }
+    });
+    return best;
+  }
+  // opts: { etch: bool, legend: bool, h: max etch height (mm) }. Returns the parts plus extra line-only parts (ETCH, LEGEND) on their own layers.
+  G.addLabels = function (parts, o) {
+    const real = parts.filter(p => p.shapes && p.shapes.length), out = parts.slice(), etch = [], legend = [], miss = [];
+    const ids = new Map(); real.forEach((p, i) => ids.set(p, 'P' + (i + 1)));
+    if (o.etch) real.forEach(p => {
+      const id = ids.get(p); let done = false;
+      for (const h of [o.h || 5, 4, 3, 2.5, 2, 1.6].filter((v, i, a) => v <= (o.h || 5) && a.indexOf(v) === i)) {
+        const sp = findSpot(p, textW(id, h), h); if (sp) { etch.push(...G.strokeText(id, sp.x, sp.y, h)); done = true; break; }
+      }
+      if (!done) miss.push(id);
+    });
+    if (o.legend && real.length) {
+      const b = G.bounds(out), lh = 6.5, th = 3.6, per = 14, cols = Math.ceil(real.length / per), rows = Math.min(per, real.length); let cx = b.x0;
+      for (let c = 0; c < cols; c++) {
+        let widest = 0;
+        real.slice(c * per, (c + 1) * per).forEach((p, i) => {
+          const bb = G.bounds([p]), line = `${ids.get(p)}  ${p.name}  ${Math.round((bb.x1 - bb.x0) * 10) / 10} x ${Math.round((bb.y1 - bb.y0) * 10) / 10} MM  ${p.thickness ? 'THK ' + p.thickness : ''}${p.note ? '  ' + p.note : ''}`;
+          widest = Math.max(widest, textW(line, th)); legend.push(...G.strokeText(line, cx, b.y1 + 8 + (rows - 1 - i) * lh, th));
+        });
+        cx += widest + 12;
+      }
+    }
+    if (etch.length) out.push({ name: 'ETCH_IDS', shapes: [], lines: etch, noexp: true, color: '#0050c8', layerColor: 5 });
+    if (legend.length) out.push({ name: 'LEGEND_NOTES', shapes: [], lines: legend, noexp: true, color: '#0050c8', layerColor: 5 });
+    out._missed = miss; return out;
+  };
+
   /* ---------- exporters ---------- */
   const r4 = v => +v.toFixed(4);
   const shapeRings = (s, seg) => [s.outer].concat(s.holes || [], (s.circles || []).map(c => G.circlePts(c.x, c.y, c.r, seg || Math.max(32, Math.ceil(c.r * 6)))));
@@ -196,6 +327,7 @@
         (s.circles || []).forEach(c => out += `    <circle cx="${tx(c.x)}" cy="${ty(c.y)}" r="${r4(c.r)}"/>\n`);
       });
       (p.curves || []).forEach(c => out += `    <polyline points="${c.map(([x, y]) => tx(x) + ',' + ty(y)).join(' ')}" stroke="#c00"/>\n`);
+      (p.lines || []).forEach(c => out += `    <polyline points="${c.map(([x, y]) => tx(x) + ',' + ty(y)).join(' ')}" stroke="${p.color || '#0050c8'}"/>\n`);
       out += '  </g>\n';
     });
     return out + '</svg>\n';
@@ -207,7 +339,7 @@
     const layer = n => n.replace(/[^\w-]/g, '_').toUpperCase().slice(0, 31);
     add(0, 'SECTION', 2, 'HEADER', 9, '$ACADVER', 1, 'AC1009', 9, '$INSUNITS', 70, 4, 0, 'ENDSEC');
     add(0, 'SECTION', 2, 'TABLES', 0, 'TABLE', 2, 'LAYER', 70, parts.length + 1);
-    parts.forEach((p, i) => add(0, 'LAYER', 2, layer(p.name), 70, 0, 62, (i % 6) + 1, 6, 'CONTINUOUS'));
+    parts.forEach((p, i) => add(0, 'LAYER', 2, layer(p.name), 70, 0, 62, p.layerColor || (i % 6) + 1, 6, 'CONTINUOUS'));
     add(0, 'LAYER', 2, 'PATHS', 70, 0, 62, 1, 6, 'CONTINUOUS');
     add(0, 'ENDTAB', 0, 'ENDSEC', 0, 'SECTION', 2, 'ENTITIES');
     const poly = (pts, lay, closed) => { add(0, 'POLYLINE', 8, lay, 66, 1, 70, closed ? 1 : 0); pts.forEach(([x, y]) => add(0, 'VERTEX', 8, lay, 10, r4(x), 20, r4(y), 30, 0)); add(0, 'SEQEND', 8, lay); };
@@ -215,6 +347,7 @@
       const lay = layer(p.name);
       p.shapes.forEach(s => { poly(s.outer, lay, true); (s.holes || []).forEach(h => poly(h, lay, true)); (s.circles || []).forEach(c => add(0, 'CIRCLE', 8, lay, 10, r4(c.x), 20, r4(c.y), 30, 0, 40, r4(c.r))); });
       (p.curves || []).forEach(c => poly(c, 'PATHS', false));
+      (p.lines || []).forEach(c => poly(c, lay, false));
     });
     add(0, 'ENDSEC', 0, 'EOF');
     return L.join('\n') + '\n';
@@ -225,13 +358,25 @@
     // A part with `twist` { c: [x, y], rate (rad per mm of height), herring } is built from slices turned about its centre (helical / herringbone gears).
     const tris = [];
     parts.forEach(p => {
-      const t = p.thickness || 5, z0 = p.z || 0, tw = p.twist && p.twist.rate ? p.twist : null;
-      let N = 1; if (tw) N = Math.min(48, Math.max(2, Math.ceil(Math.abs(tw.rate * t) * (tw.herring ? 1 : 1) / (3 * Math.PI / 180)))) * (tw.herring ? 2 : 1);
+      const t = p.thickness || 5, z0 = p.z || 0, tw = p.twist && p.twist.rate ? p.twist : null, tp = p.taper && p.taper.k1 !== 1 ? p.taper : null;
+      // slices: a twisted part needs one every few degrees (a worm turns many times, so its cap is higher); a plain taper is a single loft
+      let N = 1; if (tw) N = Math.min(tw.cap || 48, Math.max(2, Math.ceil(Math.abs(tw.rate * t) / ((tw.fine || 3) * Math.PI / 180)))) * (tw.herring ? 2 : 1);
       const ang = k => { if (!tw) return 0; const u = k / N * t; return tw.rate * (tw.herring ? (t / 2 - Math.abs(u - t / 2)) : u); };   // herringbone: turn up to the middle, then back
-      const rotate = (ring, k) => { if (!tw) return ring; const a = ang(k), c = Math.cos(a), s = Math.sin(a), [cx, cy] = tw.c; return ring.map(([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c]); };
+      // idx < nScaled: the outline and pockets shrink along a taper, the bore (a circle) keeps its size
+      const xf = (ring, k, idx, nScaled) => {
+        let R = ring;
+        if (tp && idx < nScaled) { const f = 1 + (tp.k1 - 1) * k / N, [cx, cy] = tp.c; R = R.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]); }
+        if (tw) { const a = ang(k), c = Math.cos(a), s = Math.sin(a), [cx, cy] = tw.c; R = R.map(([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c]); }
+        return R;
+      };
+      const rotate = (ring, k) => xf(ring, k, 0, 0);
       p.shapes.forEach(s => {
-        const rings = shapeRings(s), outer = G.ccw(rings[0]), holes = rings.slice(1).map(h => G.cw(h));
-        G.triangulate(outer, holes).forEach(([a, b, c]) => {
+        const rings = shapeRings(s), outer = G.ccw(rings[0]), holes = rings.slice(1).map(h => G.cw(h)), nS = 1 + (s.holes || []).length;
+        const base = G.triangulate(outer, holes);
+        if (tp) {
+          base.forEach(([a, b, c]) => tris.push([[a[0], a[1], z0], [c[0], c[1], z0], [b[0], b[1], z0]]));
+          G.triangulate(xf(outer, N, 0, nS), holes.map((h, i) => xf(h, N, i + 1, nS))).forEach(([a, b, c]) => tris.push([[a[0], a[1], z0 + t], [b[0], b[1], z0 + t], [c[0], c[1], z0 + t]]));
+        } else base.forEach(([a, b, c]) => {
           if (!tw) {
             tris.push([[a[0], a[1], z0 + t], [b[0], b[1], z0 + t], [c[0], c[1], z0 + t]]);   // top, facing up
             tris.push([[a[0], a[1], z0], [c[0], c[1], z0], [b[0], b[1], z0]]);   // bottom, facing down
@@ -241,9 +386,9 @@
             tris.push([[A0[0], A0[1], z0], [C0[0], C0[1], z0], [B0[0], B0[1], z0]]);
           }
         });
-        [outer].concat(holes).forEach(ring => {   // walls: outer ring ccw and holes cw both face outward from the solid
+        [outer].concat(holes).forEach((ring, idx) => {   // walls: outer ring ccw and holes cw both face outward from the solid
           for (let k = 0; k < N; k++) {
-            const r0 = rotate(ring, k), r1 = rotate(ring, k + 1), za = z0 + k / N * t, zb = z0 + (k + 1) / N * t;
+            const r0 = xf(ring, k, idx, nS), r1 = xf(ring, k + 1, idx, nS), za = z0 + k / N * t, zb = z0 + (k + 1) / N * t;
             for (let i = 0; i < ring.length; i++) {
               const j = (i + 1) % ring.length, a = r0[i], b = r0[j], c = r1[j], d = r1[i];
               tris.push([[a[0], a[1], za], [b[0], b[1], za], [c[0], c[1], zb]]);

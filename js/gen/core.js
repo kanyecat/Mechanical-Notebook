@@ -5,7 +5,7 @@
 (function () {
   const G = window.GEN = window.GEN || {};
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  G.LIST = [['gears', 'Gears'], ['linkages', 'Linkages'], ['cams', 'Cams'], ['pulleys', 'Pulleys']];
+  G.LIST = [['gears', 'Gears'], ['linkages', 'Linkages'], ['cams', 'Cams'], ['pulleys', 'Pulleys'], ['chains', 'Chains']];
   // the colour theme (paper by default here, or blueprint) is shared with the rest of the site: see js/theme.js
 
   G.create = function (def) {
@@ -24,12 +24,19 @@
           <div class="gpop"><button id="gexp" class="primary">Export ▾</button>
             <div class="gmenu" id="gmenu" hidden>
               <div class="gmh">Layout</div>
-              <div class="gseg" id="glayout"><button data-v="flat" class="on">Laid flat</button><button data-v="nest" title="Pack the parts tightly to save sheet material">Nested<//button><button data-v="assembled">As assembled</button></div>
+              <div class="gseg" id="glayout"><button data-v="flat" class="on">Laid flat</button><button data-v="nest" title="Pack the parts tightly to save sheet material">Nested</button><button data-v="assembled">As assembled</button></div>
               <div class="gnest" id="gnest" hidden>
                 <label>Gap between parts<span class="gin"><input type="number" id="gngap" value="2" min="0" max="50" step="0.5"><span>mm</span></span></label>
                 <label>Sheet width<span class="gin"><input type="number" id="gnw" value="" min="0" step="10" placeholder="auto"><span>mm</span></span></label>
                 <label class="gck"><input type="checkbox" id="gnrot" checked> Turn parts to fit</label>
                 <p>Small parts can sit inside the holes of big ones. Leave a gap of at least 2× your kerf.</p>
+              </div>
+              <div class="gmh">Labels (SVG and DXF)</div>
+              <div class="gnest" id="glab">
+                <label class="gck"><input type="checkbox" id="glg" checked> Part list above the drawing</label>
+                <label class="gck"><input type="checkbox" id="gle"> Etch an ID (P1, P2…) on each part</label>
+                <label>Largest ID height<span class="gin"><input type="number" id="gleh" value="5" min="1.5" max="20" step="0.5"><span>mm</span></span></label>
+                <p>Labels sit on their own blue layers (LEGEND_NOTES, ETCH_IDS), so you can switch them off or set them to engrave. They are never cut by the part layers.</p>
               </div>
               <button data-x="svg"><b>SVG</b><span>Outlines for laser cutters and vector apps</span></button>
               <button data-x="dxf"><b>DXF</b><span>CAD and CNC. One layer per part, true circles</span></button>
@@ -110,6 +117,13 @@
         listeners.push(sync); sync(); ui._host.appendChild(row); return row;
       },
       // icon buttons: opts = [[value, label, svg-inner-markup], ...]; each shows a small picture with the name under it
+      select(key, label, opts, o) {
+        o = o || {}; const row = document.createElement('div'); row.className = 'gfld gfseg';
+        row.innerHTML = `<label>${label}</label><select class="gsel">${opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`;
+        const sel = row.querySelector('select'); if (o.hl) row._hl = o.hl;
+        sel.onchange = () => { const v = sel.value; S[key] = isNaN(+v) ? v : +v; changed(); };
+        listeners.push(() => { sel.value = String(S[key]); if (o.show) row.hidden = !o.show(S); }); sel.value = String(S[key]); ui._host.appendChild(row); return row;
+      },
       pick(key, label, opts, o) {
         o = o || {}; const row = document.createElement('div'); row.className = 'gfld gpickf';
         row.innerHTML = `<label>${label}</label><div class="gpick">${opts.map(([v, l, svg]) => `<button type="button" data-v="${v}" title="${l}${o.tips && o.tips[v] ? ' — ' + o.tips[v] : ''}"><svg viewBox="0 0 48 32" aria-hidden="true">${svg}</svg><span>${l}</span></button>`).join('')}</div>`;
@@ -307,10 +321,11 @@
     const base = () => def.id + '-' + (def.fileTag ? def.fileTag(S) : 'design');
     menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
       const x = b.dataset.x, P = exportParts();
-      if (x === 'svg') G.download(base() + '.svg', G.toSVG(P), 'image/svg+xml');
-      if (x === 'dxf') G.download(base() + '.dxf', G.toDXF(P), 'application/dxf');
+      const LP = x === 'stl' ? P : G.addLabels(P, { legend: document.getElementById('glg').checked, etch: document.getElementById('gle').checked, h: +document.getElementById('gleh').value || 5 });
+      if (x === 'svg') G.download(base() + '.svg', G.toSVG(LP), 'image/svg+xml');
+      if (x === 'dxf') G.download(base() + '.dxf', G.toDXF(LP), 'application/dxf');
       if (x === 'stl') G.download(base() + '.stl', G.toSTL(P), 'model/stl');
-      menu.hidden = true; const ns = layout === 'nest' && G._nestStats ? `, nested ${Math.round(G._nestStats.w)} × ${Math.round(G._nestStats.h)} mm, ${Math.round(G._nestStats.use * 100)}% material use${G._nestStats.skipped ? ', ' + G._nestStats.skipped + ' part(s) did not fit' : ''}` : ''; toast(`${x.toUpperCase()} saved${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}${ns}`);
+      menu.hidden = true; const ns = layout === 'nest' && G._nestStats ? `, nested ${Math.round(G._nestStats.w)} × ${Math.round(G._nestStats.h)} mm, ${Math.round(G._nestStats.use * 100)}% material use${G._nestStats.skipped ? ', ' + G._nestStats.skipped + ' part(s) did not fit' : ''}` : ''; toast(`${x.toUpperCase()} saved${LP._missed && LP._missed.length ? ' (no room to etch ' + LP._missed.join(', ') + ')' : ''}${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}${ns}`);
     });
     document.getElementById('gsave').onclick = () => { G.download(base() + '.json', JSON.stringify({ generator: def.id, version: 1, settings: S }, null, 2), 'application/json'); toast('Design saved'); };
     const file = document.getElementById('gfile');

@@ -180,7 +180,7 @@
 
   /* ---------- page mount ---------- */
   // mechanisms that have a generator page, with starting settings
-  const MAKE = { 'spur-gears': ['gears'], 'rack-pinion': ['gears', { type: 'rack' }], 'four-bar': ['linkages'], 'slider-crank': ['linkages', { kind: 'slider' }], 'cam-follower': ['cams'], 'belt-pulleys': ['pulleys'], 'timing-belt': ['pulleys', { btype: 'timing' }] };
+  const MAKE = { 'spur-gears': ['gears'], 'rack-pinion': ['gears', { type: 'rack' }], 'four-bar': ['linkages'], 'slider-crank': ['linkages', { kind: 'slider' }], 'cam-follower': ['cams'], 'belt-pulleys': ['pulleys'], 'timing-belt': ['pulleys', { btype: 'timing' }], 'roller-chain': ['chains'] };
   MM.elementsCat = () => (window.MM_ELEMENTS || []).filter(c => MM.registry[c.slug]);
   MM.mount = function (slug) {
     const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug);
@@ -217,7 +217,7 @@
         <div class="box now"><h3>Right now</h3><div id="ro">&nbsp;</div></div>
         <div class="box notes"><h3>How it works</h3><ol>${meta.notes.map(n => `<li>${n.replace(/^(Good to know|Try it):/, '<b>$1:</b>')}</li>`).join('')}</ol></div>
         <div class="box used"><h3>Application</h3><ul>${apps.map(x => `<li>${x}</li>`).join('')}</ul></div>
-        ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam', pulleys: 'pulley' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
+        ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam', pulleys: 'pulley', chains: 'chain and sprocket' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
       </aside>
     </div>
     ${(m.panels || []).map((pn, i) => `<section class="box xpanel" id="${pn.id || 'xp' + i}"><h3>${pn.title}</h3>${pn.intro ? `<p class="xpintro">${pn.intro}</p>` : ''}<div class="xpbody"></div></section>`).join('')}
@@ -265,9 +265,13 @@
     document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); setPlaying(!playing); } });
     function render() {
       MM.frame(cv, m, a, P); if (gc) MM.graphFrame(gc, m, a, P);
-      const r = m.graph && m.graph.readout ? m.graph.readout(a, P) : null; if (r) ro.innerHTML = `<b>${r.big}</b><span>${r.small}</span>`;
-      const deg = ((a % period) + period) % period / period * 360;
-      sc.value = deg; angv.textContent = Math.round(deg) + '°';
+      // Right after a tap on a link the page text is left alone: phone browsers (iPhone Safari especially) treat a page that
+      // changes under the finger as a "hover" and drop the tap, so links would only highlight and not open. Canvases keep moving.
+      if (performance.now() < (window.MNQuiet || 0)) return;
+      const r = m.graph && m.graph.readout ? m.graph.readout(a, P) : null;
+      if (r) { const h = `<b>${r.big}</b><span>${r.small}</span>`; if (h !== ro._h) { ro._h = h; ro.innerHTML = h; } }
+      const deg = ((a % period) + period) % period / period * 360, dt = Math.round(deg) + '°';
+      sc.value = deg; if (dt !== angv.textContent) angv.textContent = dt;
       if (learn) learn.tick(a);
     }
     function tick(now) {

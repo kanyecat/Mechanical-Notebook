@@ -21,14 +21,24 @@
   const styleKey = () => [ST.ha, ST.hf, ST.straight ? 1 : 0, ST.rr].join(':');
   const fillet = (pts, r) => G.fillet(pts, r);
 
+  /* ---------- gear body: holes, teardrops or spokes between the hub and the tooth roots (external gears) ---------- */
+  const bodyOf = (rf, bore, S) => {
+    if (!S.gdesign || S.gdesign === 'solid') return { holes: [], circles: [] };
+    const hubR = Math.max(bore / 2 + 3, S.ghub > 0 ? S.ghub / 2 : 0.28 * rf), rim = S.grim > 0 ? S.grim : Math.max(3, 0.16 * rf), web = S.gweb > 0 ? S.gweb : Math.max(3, 0.1 * rf);
+    const rOut = rf - rim, crn = S.gcrn > 0 ? S.gcrn : Math.min(5, 0.25 * (rOut - hubR));
+    return G.pockets(S.gdesign, Math.max(2, Math.round(S.gpn)), hubR, rOut, web, crn, (S.gsweep || 0) * deg);
+  };
+  const bodyKey = S => [S.gdesign, S.gpn, S.gweb, S.ghub, S.grim, S.gcrn, S.gsweep].join(':');
+  const gearShape = (g, bore, S) => { const b = bodyOf(g.rf, bore, S); return { outer: g.pts, holes: b.holes, circles: (bore > 0 ? [{ x: 0, y: 0, r: bore / 2 }] : []).concat(b.circles) }; };
+
   /* External gear outline (centre at origin, tooth 0 centred on +x). */
-  function external(z, m, alpha, x, backlash, n) {
+  function external(z, m, alpha, x, backlash, n, one) {   // one: just tooth 0 (for bevel gears, built from a non-whole virtual tooth count)
     const rp = m * z / 2, rb = rp * Math.cos(alpha), ra = rp + m * (ST.ha + x), rf = rp - m * (ST.hf - x);
     const s = m * (Math.PI / 2 + 2 * x * Math.tan(alpha)) - backlash / 2, psiP = s / (2 * rp), pitch = TAU / z;
     const hA = r => ST.straight ? psiP - (r - rp) * Math.tan(alpha) / rp : halfAngle(psiP, alpha, rb, r), r0 = ST.straight ? rf : Math.max(rb, rf), pts = [];
     const flank = []; for (let i = 0; i <= n; i++) { const r = r0 + (ra - r0) * (i / n) ** 1.3; flank.push([r, Math.max(0, hA(r))]); }
     const psiRoot = hA(r0);
-    for (let k = 0; k < z; k++) {
+    for (let k = 0; k < (one ? 1 : z); k++) {
       const c = k * pitch;
       if (rf < rb && !ST.straight) pts.push([rf * Math.cos(c - psiRoot), rf * Math.sin(c - psiRoot)]);           // radial line below the base circle
       flank.forEach(([r, p]) => pts.push([r * Math.cos(c - p), r * Math.sin(c - p)]));           // right flank, going out
@@ -38,7 +48,7 @@
       const a0 = c + psiRoot, a1 = c + pitch - psiRoot, seg = Math.max(2, Math.ceil((a1 - a0) / (2 * deg)));  // root arc to the next tooth
       for (let i = 1; i < seg; i++) { const a = a0 + (a1 - a0) * i / seg; pts.push([rf * Math.cos(a), rf * Math.sin(a)]); }
     }
-    return { pts: ST.rr > 0 ? fillet(pts, ST.rr * m) : pts, rp, rb, ra, rf, pointed: hA(ra) <= 0 };
+    return { pts: ST.rr > 0 && !one ? fillet(pts, ST.rr * m) : pts, rp, rb, ra, rf, pointed: hA(ra) <= 0 };
   }
 
   /* Internal (ring) gear: the tooth spaces have the shape of an external tooth. Space 0 is centred on +x. */
@@ -83,15 +93,15 @@
   const cache = {};
   function geo(S) {
     setStyle(S);
-    const key = styleKey() + JSON.stringify([S.z1, S.z2, S.m, S.pa, S.x1, S.x2, S.bl, S.type, S.fine, S.rackN, S.rim, S.bore1, S.bore2]);
+    const key = styleKey() + bodyKey(S) + JSON.stringify([S.z1, S.z2, S.m, S.pa, S.x1, S.x2, S.bl, S.type, S.fine, S.rackN, S.rim, S.bore1, S.bore2]);
     if (cache.key === key) return cache.v;
     const alpha = S.pa * deg, n = S.fine ? 36 : 12, m = S.m;
     const g1 = external(S.z1, m, alpha, S.x1, S.bl, n);
-    const v = { alpha, g1, s1: { outer: g1.pts, circles: S.bore1 > 0 ? [{ x: 0, y: 0, r: S.bore1 / 2 }] : [] } };
+    const v = { alpha, g1, s1: gearShape(g1, S.bore1, S) };
     if (S.type === 'ext') {
       const g2 = external(S.z2, m, alpha, S.x2, S.bl, n), aw = workingAngle(alpha, S.x1, S.x2, S.z1, S.z2);
       v.g2 = g2; v.aw = aw; v.a = (g1.rp + g2.rp) * Math.cos(alpha) / Math.cos(aw);
-      v.s2 = { outer: g2.pts, circles: S.bore2 > 0 ? [{ x: 0, y: 0, r: S.bore2 / 2 }] : [] };
+      v.s2 = gearShape(g2, S.bore2, S);
       v.eps = (Math.sqrt(g1.ra ** 2 - g1.rb ** 2) + Math.sqrt(g2.ra ** 2 - g2.rb ** 2) - v.a * Math.sin(aw)) / (Math.PI * m * Math.cos(alpha));
     } else if (S.type === 'int') {
       const g2 = internal(S.z2, m, alpha, S.bl, n); v.g2 = g2; v.aw = alpha; v.a = g2.rp - g1.rp;
@@ -130,9 +140,9 @@
   const parseT = S => { if (tCache.s !== S.train) { try { tCache.T = JSON.parse(S.train); } catch (e) { tCache.T = TP.pair.T; } tCache.s = S.train; } return tCache.T; };
   const gCache = {};
   function gearGeo(S, g) {   // outline in the gear's own frame, cached
-    setStyle(S); const key = [styleKey(), g.type, g.z, g.bore, g.rim, S.m, S.pa, S.bl, S.fine].join(); if (gCache[key]) return gCache[key];
+    setStyle(S); const key = [styleKey(), bodyKey(S), g.type, g.z, g.bore, g.rim, S.m, S.pa, S.bl, S.fine].join(); if (gCache[key]) return gCache[key];
     const a = S.pa * deg, n = S.fine ? 30 : 10; let v;
-    if (g.type === 'spur') { const e = external(g.z, S.m, a, 0, S.bl, n); v = { e, rp: e.rp, ra: e.ra, rf: e.rf, shape: { outer: e.pts, circles: g.bore > 0 ? [{ x: 0, y: 0, r: g.bore / 2 }] : [] } }; }
+    if (g.type === 'spur') { const e = external(g.z, S.m, a, 0, S.bl, n); v = { e, rp: e.rp, ra: e.ra, rf: e.rf, shape: gearShape(e, g.bore, S) }; }
     if (g.type === 'ring') { const e = internal(g.z, S.m, a, S.bl, n); v = { e, rp: e.rp, ra: e.ro + g.rim, ri: e.ri, shape: { outer: G.circlePts(0, 0, e.ro + g.rim, Math.max(120, g.z * 6)), holes: [e.pts] } }; }
     if (g.type === 'rack') { const r = rack(g.z, S.m, a, S.bl, g.rim); v = { rp: 0, len: r.len, shape: { outer: r.pts } }; }
     if (Object.keys(gCache).length > 300) for (const k in gCache) delete gCache[k];
@@ -141,7 +151,7 @@
   // positions, speeds (relative to the driver) and the starting angle that puts teeth into spaces at every mesh
   const tSolve = {};
   function solveT(S) {
-    if (tSolve.s === S.train + S.m + S.pa + S.bl + S.fine + S.tooth + S.rnd) return tSolve.v;
+    if (tSolve.s === S.train + S.m + S.pa + S.bl + S.fine + S.tooth + S.rnd + bodyKey(S)) return tSolve.v;
     const T = parseT(S), out = {}, errs = [];
     T.forEach((g, i) => {
       const geo = gearGeo(S, g);
@@ -175,7 +185,7 @@
       if (A.g.how === 'shaft' && A.g.parent === B.g.id || B.g.how === 'shaft' && B.g.parent === A.g.id) continue;
       const d = Math.hypot(A.x - B.x, A.y - B.y); if (d < A.geo.ra + B.geo.ra - 0.01 && Math.abs(d - (A.geo.rp + B.geo.rp)) > 0.01) errs.push([A.g.id + ' / ' + B.g.id, 'overlap. Change a direction angle or a tooth count.']);
     }
-    tSolve.s = S.train + S.m + S.pa + S.bl + S.fine + S.tooth + S.rnd; tSolve.v = { out, errs }; return tSolve.v;
+    tSolve.s = S.train + S.m + S.pa + S.bl + S.fine + S.tooth + S.rnd + bodyKey(S); tSolve.v = { out, errs }; return tSolve.v;
   }
   function trainParts(S, t, layout) {
     const { out } = solveT(S), parts = [], vals = Object.values(out);
@@ -296,20 +306,31 @@
     herring: '<rect x="8" y="5" width="32" height="22" rx="2"/><path d="M11 5L16 16L11 27M18 5L23 16L18 27M25 5L30 16L25 27M32 5L37 16L32 27"/>'
   };
 
+  const bodyIcon = d => {
+    const e = external(16, 4, 20 * deg, 0, 0.1, 8), S0 = { gdesign: d, gpn: 5, gweb: 0, ghub: 0, grim: 0, gcrn: 0, gsweep: 35 }, sh = gearShape(e, 6, S0), k = 12.5 / e.ra;
+    const T = ([x, y]) => `${(24 + x * k).toFixed(1)} ${(16 - y * k).toFixed(1)}`, rings = [sh.outer].concat(sh.holes).map(r => 'M' + r.filter((_, i) => i % 2 === 0).map(T).join('L') + 'Z').join('');
+    return `<path fill-rule="evenodd" d="${rings}"/>` + sh.circles.map(c => `<circle cx="${(24 + c.x * k).toFixed(1)}" cy="${(16 - c.y * k).toFixed(1)}" r="${(c.r * k).toFixed(1)}"/>`).join('');
+  };
+  const BODIES = [['solid', 'Solid'], ['holes', 'Drilled'], ['teardrop', 'Teardrop'], ['spokes', 'Skeleton'], ['swirl', 'Swirl']];
+
   const names = S => ['Gear 1 (' + S.z1 + 't)', S.type === 'rack' ? 'Rack' : S.type === 'int' ? 'Ring gear (' + S.z2 + 't)' : 'Gear 2 (' + S.z2 + 't)'];
 
+  const X = window.GEARX ? window.GEARX({ G, f, external, setStyle, ST: () => ST, styleKey, bodyKey, gearShape, fillet }) : null;
+  const crossed = S => !!X && (S.mode === 'bevel' || S.mode === 'worm');
+
   const DEF = {
-    id: 'gears', title: 'Gear generator', subtitle: 'Involute spur gears, ring gears and racks, as a pair or a whole train. Change any number and see every gear respond.',
-    defaults: { mode: 'pair', train: JSON.stringify(TP.compound.T), z1: 12, z2: 30, type: 'ext', rackN: 16, m: 4, pa: 20, x1: 0, x2: 0, bl: 0.1, bore1: 6, bore2: 8, rim: 10, t1: 6, t2: 6, fine: 1, tooth: 'standard', rnd: 0, ftype: 'spur', helix: 20, motor: 60, torque: 1, grid: 1, guides: 1, labels: 1, rpm: 6 },
+    id: 'gears', title: 'Gear generator', subtitle: 'Spur, helical, bevel and worm gears, ring gears and racks, as a pair or a whole train. Change any number and see every gear respond.',
+    defaults: Object.assign({}, X ? X.defaults : {}, { mode: 'pair', train: JSON.stringify(TP.compound.T), z1: 12, z2: 30, type: 'ext', rackN: 16, m: 4, pa: 20, x1: 0, x2: 0, bl: 0.1, bore1: 6, bore2: 8, rim: 10, t1: 6, t2: 6, fine: 1, tooth: 'standard', rnd: 0, gdesign: 'solid', gpn: 5, gweb: 0, ghub: 0, grim: 0, gcrn: 0, gsweep: 35, ftype: 'spur', helix: 20, motor: 60, torque: 1, grid: 1, guides: 1, labels: 1, rpm: 6 }),
     panel(ui) {
       ui.section('Setup', () => {
-        ui.seg('mode', 'Build', [['pair', 'Gear pair'], ['train', 'Gear train']], { refit: 1 });
-        ui.note('', { live: S => S.mode === 'train' ? 'Add as many gears as you like in the <b>Gears</b> section below.' : 'Two gears with full control of tooth shape. Switch to Gear train to connect more.' });
+        ui.seg('mode', 'Build', [['pair', 'Pair'], ['train', 'Train']].concat(X ? [['bevel', 'Bevel'], ['worm', 'Worm']] : []), { refit: 1 });
+        ui.note('', { live: S => S.mode === 'train' ? 'Add as many gears as you like in the <b>Gears</b> section below.' : S.mode === 'bevel' ? 'Two cone-shaped gears for shafts that meet at an angle. Tooth shape, module and the body designs below still apply.' : S.mode === 'worm' ? 'A screw-like worm turning a wheel at right angles: a big reduction in a small space.' : 'Two gears with full control of tooth shape. Switch to Gear train to connect more.' });
       });
       ui.section('Gears', () => {
         ui.custom(trainEditor);
         ui.num('t1', 'Thickness', { unit: 'mm', min: 0.5, max: 200, step: 0.5, help: 'Face width of every gear, used for the STL' });
       }, { show: S => S.mode === 'train' });
+      if (X) X.panel(ui);
       ui.section('Gear 1 · driver', () => {
         ui.num('z1', 'Teeth', { min: 5, max: 200, int: 1 });
         ui.num('bore1', 'Bore', { unit: 'mm', min: 0, max: 500, step: 0.5 });
@@ -326,8 +347,8 @@
       ui.section('Gear type', () => {
         ui.pick('ftype', 'Teeth along the face', [['spur', 'Spur', IC.spur], ['helical', 'Helical', IC.helical], ['herring', 'Herringbone', IC.herring]], { tips: { spur: 'Straight teeth. Simple to laser cut.', helical: 'Slanted teeth: smoother and quieter, with some end thrust. Best for 3D printing.', herring: 'Two opposite slants meeting in a V: smooth with no end thrust.' } });
         ui.num('helix', 'Helix angle', { unit: '°', min: 5, max: 45, step: 1, show: S => S.ftype !== 'spur', help: 'Lean of the teeth. 15–25° is typical. The flat view and DXF show the end profile; the STL carries the twist.' });
-        ui.note('Bevel, worm and other crossed-axis gears need different geometry and are on the list.');
-      });
+        ui.note('Bevel and worm gears are in the Setup section above. Spiral and hypoid bevels are not included.');
+      }, { show: S => S.mode === 'pair' || S.mode === 'train' });
       ui.section('Tooth form', () => {
         ui.pick('tooth', 'Tooth style', [['standard', 'Standard', IC.standard], ['stub', 'Stub', IC.stub], ['tall', 'Pointed', IC.tall], ['soft', 'Soft', IC.soft], ['straight', 'Straight', IC.straight]], { tips: { standard: 'Involute full-depth teeth', stub: 'Shorter and stronger. Good for small gears.', tall: 'Tall pointed teeth with deep roots. Meshes with itself.', soft: 'Rounded tips and roots. Easy on laser-cut and printed parts.', straight: 'Straight flanks instead of curved ones. Simplest outline.' } });
         ui.num('rnd', 'Edge rounding', { unit: '× module', min: 0, max: 0.6, step: 0.05, help: 'Rounds tooth tips and roots. 0.3 matches the Soft style.' });
@@ -338,12 +359,23 @@
         ui.num('bl', 'Backlash', { unit: 'mm', min: 0, max: 2, step: 0.05, help: 'Total play between teeth. Each tooth is thinned by half.' });
         ui.seg('fine', 'Curve detail', [[0, 'Draft'], [1, 'Fine']]);
       });
+      ui.section('Gear body', () => {
+        ui.pick('gdesign', 'Holes in the body', BODIES.map(([v, l]) => [v, l, bodyIcon(v)]), { tips: { solid: 'A plain disc', holes: 'A ring of round holes', teardrop: 'Teardrop pockets', spokes: 'Skeleton: straight spokes', swirl: 'Curved spokes' } });
+        ui.num('gpn', 'Pockets / spokes', { min: 3, max: 16, step: 1, int: true, show: S => S.gdesign !== 'solid' });
+        ui.num('gweb', 'Spoke width', { unit: 'mm', min: 0, max: 60, step: 0.5, show: S => S.gdesign !== 'solid', help: '0 sets it automatically from the gear size' });
+        ui.num('gsweep', 'Swirl', { unit: '°', min: -90, max: 90, step: 5, show: S => S.gdesign === 'swirl', help: 'How far each spoke curves from hub to rim' });
+        ui.num('ghub', 'Hub Ø', { unit: 'mm', min: 0, max: 400, step: 1, show: S => S.gdesign !== 'solid', help: '0 sets it automatically' });
+        ui.num('grim', 'Rim width', { unit: 'mm', min: 0, max: 100, step: 0.5, show: S => S.gdesign !== 'solid', help: 'Material left under the teeth. 0 sets it automatically.' });
+        ui.num('gcrn', 'Pocket corner radius', { unit: 'mm', min: 0, max: 30, step: 0.5, show: S => S.gdesign === 'spokes' || S.gdesign === 'swirl', help: '0 sets it automatically' });
+        ui.note('Applies to spur, helical and herringbone gears. Larger gears get bigger pockets. Rings and racks stay solid.');
+      });
       ui.section('Drive', () => {
         ui.num('motor', 'Input speed', { unit: 'rpm', min: 0, max: 100000, step: 1 });
         ui.num('torque', 'Input torque', { unit: 'N·m', min: 0, max: 100000, step: 0.1 });
       });
     },
     model(S, t) {
+      if (crossed(S)) return X.model(S, t);
       if (S.mode === 'train') return trainModel(S, t);
       const { v, p1, p2 } = pose(S, t), [n1, n2] = names(S);
       const parts = [
@@ -378,6 +410,7 @@
       };
     },
     exportParts(S, layout) {
+      if (crossed(S)) return X.exportParts(S, layout);
       if (S.mode === 'train') return trainParts(S, 0, layout);
       const { v, p1, p2 } = pose(S, 0), [n1, n2] = names(S);
       let q2 = [p2[0], p2[1], p2[2]];
@@ -390,8 +423,9 @@
         { name: n2, thickness: S.t2, _c: [q2[0], q2[1]], shapes: [G.placeShape(v.s2, q2[0], q2[1], q2[2])] }
       ];
     },
-    fileTag: S => S.mode === 'train' ? `m${S.m}-train-${parseT(S).map(g => g.z).join('-')}` : `m${S.m}-${S.z1}x${S.type === 'rack' ? 'rack' : S.type === 'int' ? 'ring' + S.z2 : S.z2}`,
+    fileTag: S => crossed(S) ? X.fileTag(S) : S.mode === 'train' ? `m${S.m}-train-${parseT(S).map(g => g.z).join('-')}` : `m${S.m}-${S.z1}x${S.type === 'rack' ? 'rack' : S.type === 'int' ? 'ring' + S.z2 : S.z2}`,
     info(S) {
+      if (crossed(S)) return X.info(S);
       if (S.mode === 'train') return trainInfo(S);
       const v = geo(S), m = S.m, a = v.alpha, rows = [];
       const ratio = S.type === 'rack' ? null : S.z2 / S.z1, zmin1 = 2 * (ST.ha - S.x1) / Math.sin(a) ** 2;
@@ -418,7 +452,7 @@
   };
 
   /* ---------- helical and herringbone: the tooth shape in the flat view is the "transverse" section, found from the normal module and angle ---------- */
-  const isHel = S => S.ftype === 'helical' || S.ftype === 'herring';
+  const isHel = S => S.mode !== 'bevel' && S.mode !== 'worm' && (S.ftype === 'helical' || S.ftype === 'herring');
   const eff = S => {
     if (!isHel(S)) return S;
     const b = Math.min(45, Math.max(1, S.helix)) * deg, cb = Math.cos(b);

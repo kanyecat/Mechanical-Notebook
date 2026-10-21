@@ -184,3 +184,5 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 .gpick button.on{border-color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);font-weight:600}
 .gpick button svg .f{fill:currentColor;fill-opacity:.18}
 .gmenu .gseg{display:flex;width:100%}.gmenu .gseg button{flex:1;padding:6px 4px}
+
+.gsel{font:inherit;font-size:12px;background:var(--chrome);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 6px;max-width:60%}

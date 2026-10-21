@@ -1,5 +1,22 @@
 /* Site navigation: mobile menu, Generators drop-down, glossary on static text. MIT licence. */
 (function () {
+  // Taps on links: phones can drop a tap when the page changes under the finger (the animations do this), so the link only
+  // highlights. Pause text updates around a tap, and if the browser still does not send the click, follow the link ourselves.
+  let tap = null;
+  document.addEventListener('touchstart', e => {
+    const a = e.target.closest && e.target.closest('a[href]'); tap = null; if (!a || e.touches.length !== 1) return;
+    window.MNQuiet = performance.now() + 1000; const t = e.touches[0]; tap = { a, x: t.clientX, y: t.clientY, at: Date.now() };
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const s = tap; tap = null; if (!s) return; const t = e.changedTouches[0];
+    if (Math.hypot(t.clientX - s.x, t.clientY - s.y) > 10 || Date.now() - s.at > 600) return;
+    const href = s.a.href; if (s.a.target && s.a.target !== '_self') return; if (!/^https?:|^file:/.test(href)) return;
+    let clicked = false; const seen = ev => { if (ev.target.closest && ev.target.closest('a') === s.a) clicked = true; };
+    document.addEventListener('click', seen, true);
+    setTimeout(() => { document.removeEventListener('click', seen, true); if (!clicked) location.href = href; }, 400);
+  }, { passive: true });
+  document.addEventListener('touchcancel', () => { tap = null; }, { passive: true });
+
   const nav = document.querySelector('.nav'); if (!nav) return;
   const menuB = nav.querySelector('.menub'), dd = nav.querySelector('.dd'), ddB = dd && dd.querySelector('.ddb');
   const setMenu = open => { nav.classList.toggle('open', open); menuB.setAttribute('aria-expanded', open); menuB.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); };
