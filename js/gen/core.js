@@ -157,16 +157,44 @@
     };
     const toWorld = (px, py) => [view.x + (px - cv.clientWidth / 2) / view.s, view.y - (py - cv.clientHeight / 2) / view.s];
     cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(), [wx, wy] = toWorld(e.clientX - r.left, e.clientY - r.top); view.s = Math.min(400, Math.max(0.05, view.s * Math.exp(-e.deltaY * 0.0015))); const [nx, ny] = toWorld(e.clientX - r.left, e.clientY - r.top); view.x += wx - nx; view.y += wy - ny; dirty = true; }, { passive: false });
-    let drag = null, lastParts = []; const xy = document.getElementById('gxy');
+    let lastParts = []; const xy = document.getElementById('gxy');
     const inPoly = (pt, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
-    cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY, view.x, view.y]; cv.setPointerCapture(e.pointerId); });
+    // pointers: one = pan, two = pinch-zoom + pan about the midpoint
+    const ptrs = new Map(); let g = null, lastTap = 0;
+    const rebase = () => {
+      const a = [...ptrs.values()];
+      if (a.length === 1) g = { n: 1, x: a[0][0], y: a[0][1], vx: view.x, vy: view.y };
+      else if (a.length >= 2) {
+        const r = cv.getBoundingClientRect(), mx = (a[0][0] + a[1][0]) / 2 - r.left, my = (a[0][1] + a[1][1]) / 2 - r.top;
+        g = { n: 2, d: Math.max(10, Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1])), s: view.s, w: toWorld(mx, my) };
+      } else g = null;
+    };
+    cv.addEventListener('pointerdown', e => {
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]); try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      if (e.pointerType === 'touch' && ptrs.size === 1) { const n = Date.now(); if (n - lastTap < 320) { fit(); lastTap = 0; } else lastTap = n; }
+      rebase();
+    });
     cv.addEventListener('pointermove', e => {
       const r = cv.getBoundingClientRect(), [wx, wy] = toWorld(e.clientX - r.left, e.clientY - r.top);
-      const under = lastParts.slice().reverse().find(p => p.name !== 'Path' && p.shapes.some(s => inPoly([wx, wy], s.outer) && !(s.holes || []).some(h => inPoly([wx, wy], h)) && !(s.circles || []).some(c => Math.hypot(wx - c.x, wy - c.y) < c.r)));
-      xy.textContent = `x ${wx.toFixed(2)}  y ${wy.toFixed(2)} mm` + (under ? `  ·  ${under.name}` : '');
-      if (!drag) return; view.x = drag[2] - (e.clientX - drag[0]) / view.s; view.y = drag[3] + (e.clientY - drag[1]) / view.s; dirty = true;
+      if (e.pointerType !== 'touch') {
+        const under = lastParts.slice().reverse().find(p => p.name !== 'Path' && p.shapes.some(s => inPoly([wx, wy], s.outer) && !(s.holes || []).some(h => inPoly([wx, wy], h)) && !(s.circles || []).some(c => Math.hypot(wx - c.x, wy - c.y) < c.r)));
+        xy.textContent = `x ${wx.toFixed(2)}  y ${wy.toFixed(2)} mm` + (under ? `  ·  ${under.name}` : '');
+      }
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (!g) return;
+      const a = [...ptrs.values()];
+      if (g.n === 1 && a.length === 1) { view.x = g.vx - (a[0][0] - g.x) / view.s; view.y = g.vy + (a[0][1] - g.y) / view.s; }
+      else if (g.n === 2 && a.length >= 2) {
+        const d = Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1]), mx = (a[0][0] + a[1][0]) / 2 - r.left, my = (a[0][1] + a[1][1]) / 2 - r.top;
+        view.s = Math.min(400, Math.max(0.05, g.s * d / g.d));
+        // keep the world point that was under the fingers' midpoint under the midpoint now
+        view.x = g.w[0] - (mx - cv.clientWidth / 2) / view.s; view.y = g.w[1] + (my - cv.clientHeight / 2) / view.s;
+      }
+      dirty = true;
     });
-    cv.addEventListener('pointerup', () => drag = null);
+    const up = e => { ptrs.delete(e.pointerId); rebase(); };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('lostpointercapture', up);
     cv.addEventListener('dblclick', fit);
     document.getElementById('gfit').onclick = fit;
     document.getElementById('g100').onclick = () => { view.s = 96 / 25.4; dirty = true; };

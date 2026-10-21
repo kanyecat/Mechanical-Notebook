@@ -37,7 +37,7 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 /* workspace */
 .gwork{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"view side" "res side";min-height:0}
 .gview{grid-area:view;position:relative;overflow:hidden;background:var(--canvas)}
-#gcv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none;display:block}#gcv:active{cursor:grabbing}
+#gcv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none;-webkit-touch-callout:none;user-select:none;display:block}#gcv:active{cursor:grabbing}
 .gtitle{position:absolute;left:18px;top:14px;pointer-events:none;max-width:420px}
 .gtitle h1{margin:0;font-family:var(--sans);font-weight:800;font-size:15px;letter-spacing:.12em;text-transform:uppercase}
 .gtitle p{margin:3px 0 0;color:var(--faint);font-size:12px;line-height:1.4}
