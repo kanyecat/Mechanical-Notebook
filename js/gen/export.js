@@ -75,6 +75,111 @@
     return tris;
   };
 
+
+  /* ---------- rounding: cut every sharp corner of a closed outline back and bridge it with a curve of radius r ---------- */
+  // round the sharp corners of a closed outline with radius r (by cutting each corner back along the outline and bridging with a curve)
+  G.fillet = function (pts, r) {
+    const TAU = Math.PI * 2;
+    pts = pts.filter((q, i) => { const o = pts[(i + pts.length - 1) % pts.length]; return Math.hypot(q[0] - o[0], q[1] - o[1]) > 1e-7; });   // drop repeated points
+    const n = pts.length; if (!(r > 0) || n < 4) return pts;
+    const seg = [], cum = [0]; let tot = 0;
+    for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]); seg.push(L); tot += L; cum.push(tot); }
+    const at = s => { s = ((s % tot) + tot) % tot; let lo = 0, hi = n; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= s) lo = mid; else hi = mid; } const a = pts[lo], b = pts[(lo + 1) % n], u = seg[lo] ? (s - cum[lo]) / seg[lo] : 0; return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]; };
+    const corners = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[(i + n - 1) % n], c = pts[i], q = pts[(i + 1) % n];
+      const a1 = Math.atan2(c[1] - p[1], c[0] - p[0]), a2 = Math.atan2(q[1] - c[1], q[0] - c[0]); let t = a2 - a1; while (t > Math.PI) t -= TAU; while (t < -Math.PI) t += TAU;
+      if (Math.abs(t) > 0.45) corners.push({ i, s: cum[i], t });
+    }
+    if (!corners.length) return pts;
+    corners.forEach((c, k) => { const nx = corners[(k + 1) % corners.length], pv = corners[(k + corners.length - 1) % corners.length];
+      const gapN = ((nx.s - c.s) % tot + tot) % tot || tot, gapP = ((c.s - pv.s) % tot + tot) % tot || tot;
+      c.d = Math.min(r * Math.tan(Math.abs(c.t) / 2), 0.45 * Math.min(gapN, gapP)); });
+    const skip = new Array(n).fill(false), isC = new Map(corners.map(c => [c.i, c]));
+    corners.forEach(c => { for (let i = 0; i < n; i++) { if (i === c.i) continue; let ds = ((cum[i] - c.s) % tot + tot) % tot; if (ds > tot / 2) ds -= tot; if (Math.abs(ds) < c.d) skip[i] = true; } });
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const c = isC.get(i);
+      if (c && c.d > 1e-6) { const E = at(c.s - c.d), X = at(c.s + c.d), V = pts[i], m = 6; for (let j = 0; j <= m; j++) { const u = j / m, w0 = (1 - u) * (1 - u), w1 = 2 * u * (1 - u), w2 = u * u; out.push([w0 * E[0] + w1 * V[0] + w2 * X[0], w0 * E[1] + w1 * V[1] + w2 * X[1]]); } }
+      else if (!skip[i]) out.push(pts[i]);
+    }
+    return out;
+  };
+
+  /* ---------- nesting: pack parts close together for laser cutting ----------
+     Each part is rasterised on a coarse grid, grown by half the gap, then dropped into the lowest free spot on the sheet
+     (bottom-left fill), also trying 90° turns. Small parts can sit inside the holes and cut-outs of big ones. */
+  G.nest = function (parts, opt) {
+    opt = opt || {}; const gap = Math.max(0, opt.gap == null ? 2 : opt.gap), rot = opt.rotate !== false;
+    const items = parts.filter(p => p.shapes && p.shapes.length), extras = parts.filter(p => !(p.shapes && p.shapes.length));
+    if (!items.length) return parts;
+    const rotPt = (k, [x, y]) => k === 0 ? [x, y] : k === 1 ? [-y, x] : k === 2 ? [-x, -y] : [y, -x];
+    const ringsOf = (p, k) => p.shapes.map(s => [s.outer].concat(s.holes || [], (s.circles || []).map(c => G.circlePts(c.x, c.y, c.r, 48))).map(r => r.map(q => rotPt(k, q))));
+    const info = items.map(p => {
+      const b = G.bounds([Object.assign({}, p, { curves: [] })]); let area = 0;
+      p.shapes.forEach(s => { area += Math.abs(G.area(s.outer)); (s.holes || []).forEach(h => area -= Math.abs(G.area(h))); (s.circles || []).forEach(c => area -= Math.PI * c.r * c.r); });
+      return { p, b, area, dim: Math.max(b.x1 - b.x0, b.y1 - b.y0) };
+    });
+    const totalArea = info.reduce((a, i) => a + i.area, 0), maxDim = Math.max(...info.map(i => i.dim));
+    const cell = Math.max(0.5, maxDim / 90), pad = Math.ceil(gap / 2 / cell) + 1, k = Math.ceil(gap / 2 / cell);
+    const sheetW = opt.sheetW > 0 ? opt.sheetW : Math.max(maxDim + gap + 2, Math.sqrt(totalArea * 1.7));
+    const W = Math.ceil(sheetW / cell) + 2 * pad, Hh = Math.ceil((totalArea / (sheetW * 0.5) + maxDim * 2) / cell) + 2 * pad;
+    const occ = new Uint8Array(W * Hh);
+    const mask = (p, kq) => {   // rows of free-run segments after growing by gap/2
+      const rings = ringsOf(p, kq), xs = [], ys = [];
+      rings.forEach(rs => rs.forEach(r => r.forEach(q => { xs.push(q[0]); ys.push(q[1]); })));
+      const x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.ceil((Math.max(...xs) - x0) / cell) + 1 + 2 * pad, h = Math.ceil((Math.max(...ys) - y0) / cell) + 1 + 2 * pad;
+      const g = new Uint8Array(w * h);
+      rings.forEach(rs => {
+        for (let j = 0; j < h; j++) {
+          const yy = y0 + (j - pad + 0.5) * cell, hit = [];
+          rs.forEach(r => { for (let i = 0, n = r.length; i < n; i++) { const a = r[i], b = r[(i + 1) % n]; if ((a[1] > yy) !== (b[1] > yy)) hit.push(a[0] + (yy - a[1]) / (b[1] - a[1]) * (b[0] - a[0])); } });
+          hit.sort((u, v) => u - v);
+          for (let m = 0; m + 1 < hit.length; m += 2) { const i0 = Math.max(0, Math.floor((hit[m] - x0) / cell) + pad), i1 = Math.min(w - 1, Math.ceil((hit[m + 1] - x0) / cell) + pad); for (let i = i0; i <= i1; i++) g[j * w + i] = 1; }
+        }
+      });
+      let d = g;
+      if (k > 0) {   // grow by a disc of radius k cells
+        d = new Uint8Array(w * h);
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (g[j * w + i]) for (let dy = -k; dy <= k; dy++) { const jj = j + dy; if (jj < 0 || jj >= h) continue; const dx = Math.floor(Math.sqrt(k * k - dy * dy)); for (let ii = Math.max(0, i - dx); ii <= Math.min(w - 1, i + dx); ii++) d[jj * w + ii] = 1; }
+      }
+      const runs = []; for (let j = 0; j < h; j++) { let i = 0; while (i < w) { if (d[j * w + i]) { let e = i; while (e + 1 < w && d[j * w + e + 1]) e++; runs.push([j, i, e]); i = e + 1; } else i++; } }
+      return { w, h, runs, x0, y0 };
+    };
+    const fits = (m, px, py) => { for (const [j, a, b] of m.runs) { const row = (py + j) * W + px; for (let i = a; i <= b; i++) if (occ[row + i]) return false; } return true; };
+    const order = info.slice().sort((a, b) => b.area - a.area), placed = [];
+    order.forEach(it => {
+      let best = null;
+      for (const kq of (rot ? [0, 1, 2, 3] : [0])) {
+        if (kq === 2 && it.dim < 1) continue;
+        const m = mask(it.p, kq);
+        for (let py = 0; py + m.h <= Hh && !(best && py + m.h > best.top); py++) {
+          let found = -1; for (let px = 0; px + m.w <= W; px++) if (fits(m, px, py)) { found = px; break; }
+          if (found >= 0) { const top = py + m.h; if (!best || top < best.top || (top === best.top && found < best.px)) best = { kq, m, px: found, py, top }; break; }
+        }
+      }
+      if (!best) return;
+      best.m.runs.forEach(([j, a, b]) => { const row = (best.py + j) * W; for (let i = a; i <= b; i++) occ[row + best.px + i] = 1; });
+      placed.push({ it, ...best });
+    });
+    // build the moved parts: rotate by kq, then shift so the grown mask lands at its cell
+    const out = [], moved = new Map();
+    placed.forEach(({ it, kq, m, px, py }) => {
+      const dx = (px + pad) * cell - (m.x0), dy = (py + pad) * cell - (m.y0);
+      const T = q => { const r = rotPt(kq, q); return [r[0] + dx - 0, r[1] + dy - 0]; };
+      const np = Object.assign({}, it.p, {
+        shapes: it.p.shapes.map(s => ({ outer: s.outer.map(T), holes: (s.holes || []).map(h => h.map(T)), circles: (s.circles || []).map(c => { const [x, y] = T([c.x, c.y]); return { x, y, r: c.r }; }) })),
+        curves: [], twist: it.p.twist ? Object.assign({}, it.p.twist, { c: T(it.p.twist.c || [0, 0]) }) : undefined
+      });
+      moved.set(it.p, np);
+    });
+    // keep the user's part order
+    items.forEach(p => { if (moved.has(p)) out.push(moved.get(p)); });
+    const skipped = items.filter(p => !moved.has(p));
+    G._nestStats = (() => { const b = G.bounds(out); const w = b.x1 - b.x0, h = b.y1 - b.y0; return { w, h, use: totalArea / Math.max(1, w * h), skipped: skipped.length }; })();
+    return out.concat(skipped);
+  };
+
   /* ---------- exporters ---------- */
   const r4 = v => +v.toFixed(4);
   const shapeRings = (s, seg) => [s.outer].concat(s.holes || [], (s.circles || []).map(c => G.circlePts(c.x, c.y, c.r, seg || Math.max(32, Math.ceil(c.r * 6)))));
@@ -116,21 +221,34 @@
   };
 
   G.toSTL = function (parts) {
-    // binary STL: every shape extruded by its part's thickness, stacked from z = 0
+    // binary STL: every shape extruded by its part's thickness, stacked from z = 0.
+    // A part with `twist` { c: [x, y], rate (rad per mm of height), herring } is built from slices turned about its centre (helical / herringbone gears).
     const tris = [];
     parts.forEach(p => {
-      const t = p.thickness || 5, z0 = p.z || 0, z1 = z0 + t;
+      const t = p.thickness || 5, z0 = p.z || 0, tw = p.twist && p.twist.rate ? p.twist : null;
+      let N = 1; if (tw) N = Math.min(48, Math.max(2, Math.ceil(Math.abs(tw.rate * t) * (tw.herring ? 1 : 1) / (3 * Math.PI / 180)))) * (tw.herring ? 2 : 1);
+      const ang = k => { if (!tw) return 0; const u = k / N * t; return tw.rate * (tw.herring ? (t / 2 - Math.abs(u - t / 2)) : u); };   // herringbone: turn up to the middle, then back
+      const rotate = (ring, k) => { if (!tw) return ring; const a = ang(k), c = Math.cos(a), s = Math.sin(a), [cx, cy] = tw.c; return ring.map(([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c]); };
       p.shapes.forEach(s => {
         const rings = shapeRings(s), outer = G.ccw(rings[0]), holes = rings.slice(1).map(h => G.cw(h));
         G.triangulate(outer, holes).forEach(([a, b, c]) => {
-          tris.push([[a[0], a[1], z1], [b[0], b[1], z1], [c[0], c[1], z1]]);   // top, facing up
-          tris.push([[a[0], a[1], z0], [c[0], c[1], z0], [b[0], b[1], z0]]);   // bottom, facing down
+          if (!tw) {
+            tris.push([[a[0], a[1], z0 + t], [b[0], b[1], z0 + t], [c[0], c[1], z0 + t]]);   // top, facing up
+            tris.push([[a[0], a[1], z0], [c[0], c[1], z0], [b[0], b[1], z0]]);   // bottom, facing down
+          } else {
+            const [A, B, C] = rotate([a, b, c], N), [A0, B0, C0] = rotate([a, b, c], 0);
+            tris.push([[A[0], A[1], z0 + t], [B[0], B[1], z0 + t], [C[0], C[1], z0 + t]]);
+            tris.push([[A0[0], A0[1], z0], [C0[0], C0[1], z0], [B0[0], B0[1], z0]]);
+          }
         });
         [outer].concat(holes).forEach(ring => {   // walls: outer ring ccw and holes cw both face outward from the solid
-          for (let i = 0; i < ring.length; i++) {
-            const a = ring[i], b = ring[(i + 1) % ring.length];
-            tris.push([[a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1]]);
-            tris.push([[a[0], a[1], z0], [b[0], b[1], z1], [a[0], a[1], z1]]);
+          for (let k = 0; k < N; k++) {
+            const r0 = rotate(ring, k), r1 = rotate(ring, k + 1), za = z0 + k / N * t, zb = z0 + (k + 1) / N * t;
+            for (let i = 0; i < ring.length; i++) {
+              const j = (i + 1) % ring.length, a = r0[i], b = r0[j], c = r1[j], d = r1[i];
+              tris.push([[a[0], a[1], za], [b[0], b[1], za], [c[0], c[1], zb]]);
+              tris.push([[a[0], a[1], za], [c[0], c[1], zb], [d[0], d[1], zb]]);
+            }
           }
         });
       });

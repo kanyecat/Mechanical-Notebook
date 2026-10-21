@@ -24,7 +24,13 @@
           <div class="gpop"><button id="gexp" class="primary">Export ▾</button>
             <div class="gmenu" id="gmenu" hidden>
               <div class="gmh">Layout</div>
-              <div class="gseg" id="glayout"><button data-v="flat" class="on">Parts laid flat</button><button data-v="assembled">As assembled</button></div>
+              <div class="gseg" id="glayout"><button data-v="flat" class="on">Laid flat</button><button data-v="nest" title="Pack the parts tightly to save sheet material">Nested<//button><button data-v="assembled">As assembled</button></div>
+              <div class="gnest" id="gnest" hidden>
+                <label>Gap between parts<span class="gin"><input type="number" id="gngap" value="2" min="0" max="50" step="0.5"><span>mm</span></span></label>
+                <label>Sheet width<span class="gin"><input type="number" id="gnw" value="" min="0" step="10" placeholder="auto"><span>mm</span></span></label>
+                <label class="gck"><input type="checkbox" id="gnrot" checked> Turn parts to fit</label>
+                <p>Small parts can sit inside the holes of big ones. Leave a gap of at least 2× your kerf.</p>
+              </div>
               <button data-x="svg"><b>SVG</b><span>Outlines for laser cutters and vector apps</span></button>
               <button data-x="dxf"><b>DXF</b><span>CAD and CNC. One layer per part, true circles</span></button>
               <button data-x="stl"><b>STL</b><span>3D printing. Each part extruded to its thickness</span></button>
@@ -103,13 +109,23 @@
         const sync = () => { btns.forEach(b => b.classList.toggle('on', String(S[key]) === b.dataset.v)); if (o.show) row.hidden = !o.show(S); };
         listeners.push(sync); sync(); ui._host.appendChild(row); return row;
       },
+      // icon buttons: opts = [[value, label, svg-inner-markup], ...]; each shows a small picture with the name under it
+      pick(key, label, opts, o) {
+        o = o || {}; const row = document.createElement('div'); row.className = 'gfld gpickf';
+        row.innerHTML = `<label>${label}</label><div class="gpick">${opts.map(([v, l, svg]) => `<button type="button" data-v="${v}" title="${l}${o.tips && o.tips[v] ? ' — ' + o.tips[v] : ''}"><svg viewBox="0 0 48 32" aria-hidden="true">${svg}</svg><span>${l}</span></button>`).join('')}</div>`;
+        const btns = [...row.querySelectorAll('button')]; if (o.hl) row._hl = o.hl;
+        btns.forEach(b => b.onclick = () => { const v = b.dataset.v; S[key] = isNaN(+v) ? v : +v; changed(); });
+        const sync = () => { btns.forEach(b => b.classList.toggle('on', String(S[key]) === b.dataset.v)); if (o.show) row.hidden = !o.show(S); };
+        listeners.push(sync); sync(); ui._host.appendChild(row); return row;
+      },
       check(key, label, o) {
         o = o || {}; const row = document.createElement('label'); row.className = 'gfld gchk';
         row.innerHTML = `<span>${label}</span><input type="checkbox" role="switch">`; const c = row.querySelector('input');
         if (o.hl) row._hl = o.hl; c.checked = !!S[key]; c.onchange = () => { S[key] = c.checked ? 1 : 0; changed(); };
         listeners.push(() => { c.checked = !!S[key]; if (o.show) row.hidden = !o.show(S); }); ui._host.appendChild(row); return row;
       },
-      note(html, o) { const p = document.createElement('p'); p.className = 'ghelp'; p.innerHTML = html; if (o && o.live) listeners.push(() => { p.innerHTML = o.live(S); }); ui._host.appendChild(p); return p; }
+      note(html, o) { const p = document.createElement('p'); p.className = 'ghelp'; p.innerHTML = html; if (o && o.live) listeners.push(() => { p.innerHTML = o.live(S); });
+        if (o && o.show) listeners.push(() => { p.hidden = !o.show(S); }); ui._host.appendChild(p); return p; }
     };
     def.panel(ui, S);
     if (window.MNGloss) ctl.querySelectorAll('.ghelp').forEach(p => MNGloss.apply(p));
@@ -281,15 +297,20 @@
     const menu = document.getElementById('gmenu');
     document.getElementById('gexp').onclick = e => { e.stopPropagation(); menu.hidden = !menu.hidden; };
     document.addEventListener('click', e => { if (!menu.hidden && !menu.contains(e.target)) menu.hidden = true; });
-    document.getElementById('glayout').onclick = e => { const b = e.target.closest('button'); if (!b) return; layout = b.dataset.v; document.querySelectorAll('#glayout button').forEach(x => x.classList.toggle('on', x === b)); };
-    const exportParts = () => def.exportParts ? def.exportParts(S, layout) : def.model(S, 0).parts;
+    document.getElementById('glayout').onclick = e => { const b = e.target.closest('button'); if (!b) return; layout = b.dataset.v; document.querySelectorAll('#glayout button').forEach(x => x.classList.toggle('on', x === b)); nestOn(); };
+    const nestOn = () => { document.getElementById('gnest').hidden = layout !== 'nest'; };
+    const exportParts = () => {
+      if (layout !== 'nest') return def.exportParts ? def.exportParts(S, layout) : def.model(S, 0).parts;
+      const flat = def.exportParts ? def.exportParts(S, 'flat') : def.model(S, 0).parts;
+      return G.nest(flat, { gap: +document.getElementById('gngap').value, sheetW: +document.getElementById('gnw').value, rotate: document.getElementById('gnrot').checked });
+    };
     const base = () => def.id + '-' + (def.fileTag ? def.fileTag(S) : 'design');
     menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
       const x = b.dataset.x, P = exportParts();
       if (x === 'svg') G.download(base() + '.svg', G.toSVG(P), 'image/svg+xml');
       if (x === 'dxf') G.download(base() + '.dxf', G.toDXF(P), 'application/dxf');
       if (x === 'stl') G.download(base() + '.stl', G.toSTL(P), 'model/stl');
-      menu.hidden = true; toast(`${x.toUpperCase()} saved${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}`);
+      menu.hidden = true; const ns = layout === 'nest' && G._nestStats ? `, nested ${Math.round(G._nestStats.w)} × ${Math.round(G._nestStats.h)} mm, ${Math.round(G._nestStats.use * 100)}% material use${G._nestStats.skipped ? ', ' + G._nestStats.skipped + ' part(s) did not fit' : ''}` : ''; toast(`${x.toUpperCase()} saved${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}${ns}`);
     });
     document.getElementById('gsave').onclick = () => { G.download(base() + '.json', JSON.stringify({ generator: def.id, version: 1, settings: S }, null, 2), 'application/json'); toast('Design saved'); };
     const file = document.getElementById('gfile');

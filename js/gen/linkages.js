@@ -11,8 +11,105 @@
     p.slice().reverse().forEach(q => { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); });
     return lo.slice(0, -1).concat(up.slice(0, -1));
   }
-  // a link: rounded plate around the given pivot points, with a hole at each
-  function link(pins, w, hole) { const pts = []; pins.forEach(([x, y]) => pts.push(...G.circlePts(x, y, w / 2, 40))); return { outer: hull(pts), circles: hole > 0 ? pins.map(([x, y]) => ({ x, y, r: hole / 2 })) : [] }; }
+  const LI = {
+    bar: '<rect x="3" y="11" width="42" height="10" rx="5"/><circle cx="8" cy="16" r="1.6"/><circle cx="40" cy="16" r="1.6"/>',
+    taper: '<path d="M14 6A10 10 0 0 0 14 26L38 20A4 4 0 0 0 38 12Z"/><circle cx="14" cy="16" r="2.4"/><circle cx="38" cy="16" r="1.4"/>',
+    bone: '<path d="M17.0 19.6L17.2 19.3L17.5 19.0L17.8 18.7L18.2 18.5L18.5 18.4L18.9 18.3L19.3 18.2L28.5 18.2L28.9 18.2L29.3 18.3L29.7 18.4L30.0 18.6L30.4 18.9L30.7 19.2L30.9 19.5L31.0 19.6L31.6 20.4L32.2 21.1L33.0 21.7L33.8 22.2L34.7 22.6L35.7 22.9L36.6 23.0L37.6 23.0L38.5 22.8L39.5 22.6L40.3 22.2L41.2 21.6L41.9 21.0L42.5 20.3L43.1 19.5L43.5 18.6L43.8 17.7L44.0 16.7L44.0 15.8L43.9 14.8L43.7 13.9L43.3 13.0L42.8 12.1L42.2 11.3L41.5 10.7L40.8 10.1L39.9 9.6L39.0 9.3L38.1 9.1L37.1 9.0L36.1 9.1L35.2 9.2L34.3 9.6L33.4 10.0L32.6 10.5L31.9 11.2L31.3 12.0L31.0 12.4L30.8 12.7L30.5 13.0L30.2 13.3L29.8 13.5L29.5 13.6L29.1 13.7L28.7 13.8L19.5 13.8L19.1 13.8L18.7 13.7L18.3 13.6L18.0 13.4L17.6 13.1L17.3 12.8L17.1 12.5L17.0 12.4L16.4 11.6L15.8 10.9L15.0 10.3L14.2 9.8L13.3 9.4L12.3 9.1L11.4 9.0L10.4 9.0L9.5 9.2L8.5 9.4L7.7 9.8L6.8 10.4L6.1 11.0L5.5 11.7L4.9 12.5L4.5 13.4L4.2 14.3L4.0 15.3L4.0 16.2L4.1 17.2L4.3 18.1L4.7 19.0L5.2 19.9L5.8 20.7L6.5 21.3L7.2 21.9L8.1 22.4L9.0 22.7L9.9 22.9L10.9 23.0L11.9 22.9L12.8 22.8L13.7 22.4L14.6 22.0L15.4 21.5L16.1 20.8L16.7 20.0Z"/><circle cx="11.0" cy="16.0" r="1.4"/><circle cx="37.0" cy="16.0" r="1.4"/>',
+    hammer: '<path d="M20.2 18.8L20.3 18.6L20.4 18.3L20.6 18.1L20.8 17.9L21.0 17.8L21.3 17.7L21.5 17.6L21.8 17.5L22.1 17.5L36.8 17.5L37.0 17.5L37.3 17.6L37.5 17.7L37.8 17.8L38.0 18.0L38.2 18.2L38.3 18.4L38.7 18.7L39.0 18.9L39.5 19.1L39.9 19.2L40.4 19.3L40.8 19.3L41.3 19.3L41.7 19.2L42.2 19.0L42.5 18.8L42.9 18.5L43.2 18.1L43.5 17.8L43.7 17.3L43.9 16.9L44.0 16.5L44.0 16.0L44.0 15.5L43.9 15.1L43.7 14.7L43.5 14.2L43.2 13.9L42.9 13.5L42.5 13.2L42.2 13.0L41.7 12.8L41.3 12.7L40.8 12.7L40.4 12.7L39.9 12.8L39.5 12.9L39.0 13.1L38.7 13.3L38.3 13.6L38.2 13.8L38.0 14.0L37.8 14.2L37.5 14.3L37.3 14.4L37.0 14.5L36.8 14.5L22.1 14.5L21.8 14.5L21.5 14.4L21.3 14.3L21.0 14.2L20.8 14.1L20.6 13.9L20.4 13.7L20.3 13.4L20.2 13.2L20.0 12.6L19.4 11.6L18.8 10.7L18.0 9.9L17.1 9.1L16.1 8.6L15.0 8.1L13.9 7.8L12.8 7.7L11.6 7.7L10.5 7.9L9.4 8.2L8.3 8.7L7.4 9.3L6.5 10.1L5.7 10.9L5.1 11.9L4.6 12.9L4.2 14.0L4.0 15.1L4.0 16.3L4.1 17.4L4.4 18.5L4.8 19.6L5.4 20.6L6.1 21.5L6.9 22.3L7.8 23.0L8.8 23.6L9.9 24.0L11.0 24.2L12.2 24.3L13.3 24.3L14.5 24.1L15.6 23.7L16.6 23.2L17.5 22.5L18.4 21.7L19.1 20.9L19.7 19.9L20.2 18.8Z"/><circle cx="12.3" cy="16.0" r="1.4"/><circle cx="40.7" cy="16.0" r="1.4"/>',
+    curved: '<path d="M4.1 21.4L4.9 18.7L6.1 16.1L7.6 13.8L9.4 11.6L11.5 9.7L13.9 8.2L16.4 6.9L19.1 6.1L21.9 5.6L24.7 5.5L27.5 5.8L30.2 6.5L32.9 7.5L35.3 8.9L37.6 10.6L39.5 12.6L41.2 14.9L42.5 17.4L43.5 20.0L43.9 21.4L44.0 22.0L44.0 22.6L43.9 23.1L43.8 23.7L43.5 24.2L43.2 24.7L42.9 25.2L42.4 25.6L42.0 25.9L41.4 26.2L40.9 26.4L40.3 26.5L39.7 26.5L39.1 26.5L38.6 26.3L38.0 26.1L37.5 25.8L37.1 25.5L36.6 25.0L36.3 24.6L36.0 24.1L35.8 23.5L35.7 23.2L35.3 21.6L34.6 20.1L33.7 18.7L32.6 17.5L31.3 16.4L30.0 15.4L28.5 14.7L26.9 14.2L25.2 13.9L23.6 13.9L21.9 14.0L20.3 14.4L18.8 15.1L17.3 15.9L16.0 16.9L14.8 18.1L13.9 19.4L13.1 20.9L12.5 22.4L12.3 23.2L12.1 23.8L11.9 24.3L11.5 24.8L11.2 25.3L10.7 25.6L10.2 26.0L9.7 26.2L9.2 26.4L8.6 26.5L8.0 26.5L7.4 26.4L6.8 26.3L6.3 26.1L5.8 25.8L5.3 25.4L4.9 25.0L4.6 24.5L4.3 24.0L4.1 23.4L4.0 22.9L4.0 22.3L4.0 21.7Z"/><circle cx="8.2" cy="22.3" r="1.4"/><circle cx="39.8" cy="22.3" r="1.4"/>',
+    bonecurve: '<path d="M8.3 14.9L9.8 12.9L11.5 11.0L13.4 9.5L15.6 8.2L17.9 7.2L20.3 6.5L22.8 6.2L25.3 6.2L27.7 6.5L30.1 7.2L32.4 8.2L34.6 9.5L36.5 11.0L38.2 12.9L39.7 14.9L40.0 15.5L40.4 15.8L40.8 16.0L41.3 16.1L41.9 16.3L42.6 16.6L43.1 17.0L43.6 17.5L44.1 18.0L44.4 18.6L44.7 19.2L44.9 19.9L45.0 20.5L45.0 21.2L44.9 21.9L44.7 22.6L44.4 23.2L44.1 23.8L43.7 24.3L43.2 24.7L42.6 25.1L42.0 25.4L41.3 25.7L40.7 25.8L40.0 25.8L39.3 25.8L38.6 25.6L38.0 25.4L37.4 25.0L36.9 24.6L36.4 24.1L36.0 23.6L35.6 23.0L35.4 22.3L35.2 21.7L35.2 21.0L35.2 20.3L35.3 19.7L35.6 19.0L35.9 18.4L36.2 17.9L36.4 17.3L36.2 16.7L35.6 15.7L34.3 14.2L32.8 12.9L31.1 11.8L29.3 10.9L27.5 10.3L25.5 10.0L23.5 9.9L21.5 10.1L19.6 10.6L17.8 11.3L16.0 12.3L14.4 13.5L13.0 14.9L11.9 16.3L11.7 17.0L11.7 17.6L12.1 18.2L12.3 18.7L12.6 19.3L12.8 20.0L12.8 20.7L12.8 21.3L12.7 22.0L12.5 22.7L12.2 23.3L11.8 23.9L11.4 24.4L10.9 24.8L10.3 25.2L9.7 25.5L9.0 25.7L8.4 25.8L7.7 25.8L7.0 25.7L6.3 25.6L5.7 25.3L5.1 25.0L4.6 24.5L4.1 24.0L3.7 23.5L3.4 22.9L3.2 22.2L3.0 21.6L3.0 20.9L3.1 20.2L3.2 19.5L3.4 18.9L3.8 18.3L4.2 17.7L4.6 17.2L5.2 16.8L5.8 16.5L6.4 16.2L6.9 16.1L7.4 15.9L7.8 15.7L8.1 15.3Z"/><circle cx="7.9" cy="20.9" r="1.4"/><circle cx="40.1" cy="20.9" r="1.4"/>',
+    slot: '<rect x="3" y="8" width="42" height="16" rx="8"/><rect x="13" y="13" width="22" height="6" rx="3"/><circle cx="8" cy="16" r="1.6"/><circle cx="40" cy="16" r="1.6"/>'
+  };
+
+  /* ---------- link designs ----------
+     bar: even-width plate. taper: one end bigger. bone: round bosses (hammer: with one boss bigger) at the pivots joined by a thin rod with smooth fillets.
+     curved: an arc-shaped bar (the pivots keep their distance). slot: a plate with a lightening slot cut out. */
+  let LS = { style: 'bar', rod: 40, big: 1.5, bow: 25, rim: 3 };
+  const setLS = S => { LS = { style: S.lstyle || 'bar', rod: S.lrod, big: S.lbig, bow: S.lbow, rim: S.lrim }; };
+  const arcPts = (cx, cy, r, a0, a1, n) => { const o = []; n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / (4 * deg))); for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; o.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } return o; };
+  const toWorld2 = (pts, p0, ang) => pts.map(([u, v]) => [p0[0] + u * Math.cos(ang) - v * Math.sin(ang), p0[1] + u * Math.sin(ang) + v * Math.cos(ang)]);
+  function boneOutline(L, R0, R1, h, rf) {   // pin 0 at (0,0), pin 1 at (L,0); smooth waist of half-width h
+    const xf = R => Math.sqrt((R + rf) ** 2 - (h + rf) ** 2), x0 = xf(R0), x1 = xf(R1);
+    if (!(L > x0 + x1 + 0.5)) return null;
+    const ph0 = Math.atan2(h + rf, x0), ph1 = Math.atan2(h + rf, x1), lo = [];
+    // bottom edge, left to right: fillet beside boss 0, waist, fillet beside boss 1
+    lo.push(...arcPts(x0, -(h + rf), rf, Math.PI - ph0 + 0, Math.PI / 2, 0).map(q => q));
+    lo.push(...arcPts(L - x1, -(h + rf), rf, Math.PI / 2, ph1, 0));
+    const top = lo.map(([x, y]) => [x, -y]).reverse();
+    return lo.concat(arcPts(L, 0, R1, ph1 - Math.PI, Math.PI - ph1), top, arcPts(0, 0, R0, ph0, TAU - ph0));
+  }
+  function curvedOutline(L, w, bow) {   // arc through pins at (0,0) and (L,0)
+    let s = Math.abs(bow) / 100 * L; s = Math.max(s, 0.5); let Rc = (L * L / 4 + s * s) / (2 * s);
+    if (Rc < w / 2 + 1) { Rc = w / 2 + 1; s = Rc - Math.sqrt(Math.max(0, Rc * Rc - L * L / 4)); }
+    const cx = L / 2, cy = s - Rc, a0 = Math.atan2(-cy, -L / 2), a1 = Math.atan2(-cy, L / 2), R = w / 2;
+    const out = [].concat(arcPts(cx, cy, Rc + R, a0, a1), arcPts(L, 0, R, a1, a1 - Math.PI), arcPts(cx, cy, Rc - R, a1, a0), arcPts(0, 0, R, a0 + Math.PI, a0));
+    return bow < 0 ? out.map(([x, y]) => [x, -y]).reverse() : out;
+  }
+  function curvedBoneOutline(L, R, h, bow, rf) {   // curved thin rod with round bosses at both pins
+    let sg = Math.max(Math.abs(bow) / 100 * L, 0.5), Rc = (L * L / 4 + sg * sg) / (2 * sg);
+    if (Rc < R + h + 1) { Rc = R + h + 1; sg = Rc - Math.sqrt(Math.max(0, Rc * Rc - L * L / 4)); }
+    const cx = L / 2, cy = sg - Rc, a0 = Math.atan2(-cy, -L / 2), a1 = Math.atan2(-cy, L / 2);
+    const dl = rho => { const c = (rho * rho + Rc * Rc - R * R) / (2 * rho * Rc); return Math.abs(c) <= 1 ? Math.acos(c) : null; };
+    const dO = dl(Rc + h), dI = dl(Rc - h); if (dO == null || dI == null) return null;
+    const P = (rho, a) => [cx + rho * Math.cos(a), cy + rho * Math.sin(a)];
+    const norm = (a, ref) => { while (a > ref) a -= TAU; while (a < ref - TAU) a += TAU; return a; };
+    const o1 = P(Rc + h, a1 + dO), i1 = P(Rc - h, a1 + dI), o0 = P(Rc + h, a0 - dO), i0 = P(Rc - h, a0 - dI);
+    const ang = (q, c) => Math.atan2(q[1] - c[1], q[0] - c[0]);
+    const t1o = ang(o1, [L, 0]), t1i = norm(ang(i1, [L, 0]), t1o), t0i = ang(i0, [0, 0]), t0o = norm(ang(o0, [0, 0]), t0i);
+    const out = [].concat(arcPts(cx, cy, Rc + h, a0 - dO, a1 + dO), arcPts(L, 0, R, t1o, t1i), arcPts(cx, cy, Rc - h, a1 + dI, a0 - dI), arcPts(0, 0, R, t0i, t0o));
+    const r = G.fillet(out, rf);
+    return bow < 0 ? r.map(([x, y]) => [x, -y]).reverse() : r;
+  }
+  // a window inside a plate with three or more pivots: the pins' outline pushed out by the wall, with each corner cut back so the pin keeps a ring of material
+  function windowFor(pins, w, hole, rim) {
+    const Q = hull(pins.map(p => p.slice()));
+    if (Q.length < 3 || Q.length < pins.length - 0) return null;
+    const o = w / 2 - rim, c = hole / 2 + rim + 0.5, n = Q.length, W = [];
+    if (o < 1) return null;
+    for (let i = 0; i < n; i++) {
+      const V = Q[i], P = Q[(i + n - 1) % n], N = Q[(i + 1) % n];
+      const e1 = [V[0] - P[0], V[1] - P[1]], e2 = [N[0] - V[0], N[1] - V[1]], l1 = Math.hypot(...e1), l2 = Math.hypot(...e2);
+      const n1 = [e1[1] / l1, -e1[0] / l1], n2 = [e2[1] / l2, -e2[0] / l2];   // outward for a counter-clockwise hull
+      let b = [n1[0] + n2[0], n1[1] + n2[1]]; const lb = Math.hypot(...b); if (lb < 1e-6) return null; b = [b[0] / lb, b[1] / lb];
+      const pb = [-b[1], b[0]], pts = [];
+      [n1, n2].forEach(nk => { const d = pb[0] * nk[0] + pb[1] * nk[1]; if (Math.abs(d) < 1e-6) return; const t = (o - c * (b[0] * nk[0] + b[1] * nk[1])) / d; pts.push([V[0] + b[0] * c + pb[0] * t, V[1] + b[1] * c + pb[1] * t]); });
+      if (pts.length < 2) return null;
+      // order along travel: the point on the incoming edge first
+      pts.sort((u, v) => ((u[0] - P[0]) * e1[0] + (u[1] - P[1]) * e1[1]) - ((v[0] - P[0]) * e1[0] + (v[1] - P[1]) * e1[1]));
+      W.push(pts[0], pts[1]);
+    }
+    return G.area(W) > 2 ? W : null;
+  }
+  // a link: plate around the given pivot points, with a hole at each
+  function link(pins, w, hole) {
+    const R = w / 2, big = Math.max(1, LS.big), st = LS.style, holes = hole > 0 ? pins.map(([x, y]) => ({ x, y, r: hole / 2 })) : [];
+    const radii = pins.map((_, i) => (st === 'taper' || st === 'hammer') && i === 0 ? R * big : R);
+    const plate = () => { const pts = []; pins.forEach(([x, y], i) => pts.push(...G.circlePts(x, y, radii[i], 40))); return hull(pts); };
+    if (pins.length === 2) {
+      const [p0, p1] = pins, L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
+      if (L > 1e-6) {
+        if (st === 'bone' || st === 'hammer') {
+          const h = Math.max(0.6, R * Math.min(0.9, Math.max(0.15, LS.rod / 100))), rf = Math.max(0.5, Math.min(R * 0.8, (R - h) * 2.5 + 0.5));
+          const o = boneOutline(L, radii[0], radii[1], h, rf); if (o) return { outer: toWorld2(o, p0, ang), circles: holes };
+        }
+        if (st === 'bonecurve') {
+          const h = Math.max(0.6, R * Math.min(0.9, Math.max(0.15, LS.rod / 100))), o = curvedBoneOutline(L, R, h, LS.bow, Math.max(0.5, (R - h) * 0.8));
+          if (o) return { outer: toWorld2(o, p0, ang), circles: holes };
+        }
+        if (st === 'curved' || st === 'bonecurve') return { outer: toWorld2(curvedOutline(L, w, LS.bow), p0, ang), circles: holes };
+        if (st === 'slot') {
+          const hs = R - Math.max(0.5, LS.rim), cd = hs + hole / 2 + Math.max(0.5, LS.rim);
+          if (hs > 0.4 && L - 2 * cd > 1) {
+            const a = [cd, 0], b = [L - cd, 0], sl = hull(G.circlePts(a[0], a[1], hs, 24).concat(G.circlePts(b[0], b[1], hs, 24)));
+            return { outer: plate(), holes: [toWorld2(sl, p0, ang)], circles: holes };
+          }
+        }
+      }
+    } else if (st === 'slot') {
+      const Wn = windowFor(pins, w, hole, Math.max(0.5, LS.rim)); if (Wn) return { outer: plate(), holes: [Wn], circles: holes };
+    }
+    return { outer: plate(), circles: holes };
+  }
 
   /* ---------- kinematics ---------- */
   function fourBar(S, th) {
@@ -301,9 +398,9 @@
     render();
   }
 
-  G.create({
+  const DEF = {
     id: 'linkages', title: 'Linkage generator', subtitle: 'Four-bars, slider-cranks, or build your own with as many links as you like. Trace any point and cut the links out.',
-    defaults: { mech: JSON.stringify(PRESETS.sixbar.M), kind: 'fourbar', a: 30, b: 90, c: 70, d: 80, u: 45, v: 35, branch: 0, pen: 1, r: 30, l: 90, e: 0, bw: 30, bh: 20, w: 12, hole: 4, t: 4, curve: 1, grid: 1, guides: 1, labels: 1, rpm: 20 },
+    defaults: { mech: JSON.stringify(PRESETS.sixbar.M), kind: 'fourbar', a: 30, b: 90, c: 70, d: 80, u: 45, v: 35, branch: 0, pen: 1, r: 30, l: 90, e: 0, bw: 30, bh: 20, w: 12, lstyle: 'bar', lrod: 40, lbig: 1.5, lbow: 12, lrim: 3, hole: 4, t: 4, curve: 1, grid: 1, guides: 1, labels: 1, rpm: 20 },
     panel(ui) {
       ui.section('Linkage', () => {
         ui.seg('kind', 'Type', [['fourbar', 'Four-bar'], ['slider', 'Slider'], ['multi', 'Multi-link']], { refit: 1 });
@@ -328,7 +425,14 @@
       }, { show: S => S.kind !== 'multi' });
       ui.section('Making it', () => {
         ui.check('curve', 'Show and export traced paths', { show: S => S.kind === 'multi' });
-        ui.num('w', 'Bar width', { unit: 'mm', min: 2, max: 200, step: 0.5 });
+        ui.num('w', 'Bar width', { unit: 'mm', min: 2, max: 200, step: 0.5, help: 'Width of the link at its pivots' });
+        ui.pick('lstyle', 'Link design', [['bar', 'Bar', LI.bar], ['taper', 'Tapered', LI.taper], ['bone', 'Bone', LI.bone], ['hammer', 'Big end', LI.hammer], ['curved', 'Curved', LI.curved], ['bonecurve', 'Curved bone', LI.bonecurve], ['slot', 'Slotted', LI.slot]], {
+          tips: { bar: 'Even-width plate', taper: 'One pivot has a bigger boss and the bar narrows to the other', bone: 'Round bosses at the pivots joined by a thin rod', hammer: 'Like Bone, with a bigger boss at the first pivot', curved: 'An arc-shaped bar. The pivot distance stays the same.', slot: 'A slot cut out to save weight and material' } });
+        ui.num('lrod', 'Rod width', { unit: '% of bar', min: 15, max: 90, step: 5, show: S => S.lstyle === 'bone' || S.lstyle === 'hammer' || S.lstyle === 'bonecurve', help: 'How thin the rod between the bosses is' });
+        ui.num('lbig', 'Big end', { unit: '× size', min: 1, max: 3, step: 0.1, show: S => S.lstyle === 'taper' || S.lstyle === 'hammer', help: 'Size of the larger boss compared to the bar width' });
+        ui.num('lbow', 'Bend', { unit: '% of length', min: -60, max: 60, step: 5, show: S => S.lstyle === 'curved' || S.lstyle === 'bonecurve', help: 'How far the bar bows out. Negative bows the other way.' });
+        ui.num('lrim', 'Wall', { unit: 'mm', min: 1, max: 40, step: 0.5, show: S => S.lstyle === 'slot', help: 'Material left around the slot and the pivot holes' });
+        ui.note('Links with three or more pivots keep a plain plate unless the design is Tapered or Slotted.', { show: S => S.lstyle === 'bone' || S.lstyle === 'hammer' || S.lstyle === 'curved' || S.lstyle === 'bonecurve' });
         ui.num('hole', 'Pivot hole Ø', { unit: 'mm', min: 0, max: 100, step: 0.1, help: 'Match your bolt, pin or bearing' });
         ui.num('t', 'Thickness', { unit: 'mm', min: 0.5, max: 100, step: 0.5 });
         ui.num('bw', 'Slider length', { unit: 'mm', min: 2, max: 500, hl: p => p.name === 'Slider', show: S => S.kind === 'slider' });
@@ -404,5 +508,9 @@
       if (S.hole >= S.w - 2) rows.push(['Holes too big', 'Leave at least 1 mm of material around each hole', 2]);
       return rows;
     }
-  });
+  };
+  G.create(Object.assign({}, DEF, {
+    model(S, t) { setLS(S); return DEF.model(S, t); },
+    exportParts(S, layout) { setLS(S); return DEF.exportParts(S, layout); }
+  }));
 })();

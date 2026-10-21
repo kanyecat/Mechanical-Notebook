@@ -167,3 +167,20 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 .gmath{margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:var(--ink)}
 .gmath li{margin-bottom:8px}.gmath b{color:var(--red);font-weight:600}
 .gmath sub,.gmath sup{font-size:9px}
+
+/* nesting options in the export menu */
+.gnest{display:grid;gap:6px;padding:8px 10px 4px;font-size:12px}
+.gnest label{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.gnest .gin input{width:64px}
+.gnest .gck{justify-content:flex-start}
+.gnest p{margin:2px 0 4px;color:var(--faint);font-size:11px;line-height:1.35}
+/* icon picker */
+.gpickf{display:block}
+.gpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px;margin-top:6px}
+.gpick button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:11px;line-height:1.1;min-width:0}
+.gpick button svg{width:100%;max-width:56px;height:auto;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.gpick button span{max-width:100%;overflow-wrap:anywhere;text-align:center}
+.gpick button:hover{border-color:var(--red)}
+.gpick button.on{border-color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);font-weight:600}
+.gpick button svg .f{fill:currentColor;fill-opacity:.18}
+.gmenu .gseg{display:flex;width:100%}.gmenu .gseg button{flex:1;padding:6px 4px}
