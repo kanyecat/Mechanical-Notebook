@@ -44,6 +44,12 @@
     chains: [
       ['Every sprocket engages at least 3 teeth', /engages/, () => true],
       ['Chain length fits the layout (not too tight)', /is tight$/, () => true]
+    ],
+    hinges: [
+      ['Cuts do not touch or cross', /^Cuts overlap/, () => true],
+      ['Strips between cuts survive the kerf (0.6 mm or more)', /^Strips too thin/, () => true],
+      ['Bridges are long enough not to snap (about 1 mm)', /^Bridges too short/, () => true],
+      ['Test sheet has values to cut', /^No values/, S => S.out === 'sheet']
     ]
   };
 
@@ -91,9 +97,9 @@
   /* opts: { format: 'svg' | 'dxf' | 'stl' | null, layout, exported (parts as they will be written), bed: [w, h] } */
   G.checkDesign = function (def, S, opts) {
     opts = opts || {}; const fmt = opts.format || null, items = [];
-    const add = (group, ok, label, detail) => items.push({ group, ok, label, detail: detail || '' });
+    const add = (group, ok, label, detail, block) => items.push({ group, ok, label, detail: detail || '', block: !ok && !!block });
     const guard = (group, label, fn) => { try { fn(); } catch (e) { console.error(e); add(group, false, label, 'This check could not be run.'); } };
-    const flat = (def.exportParts ? def.exportParts(S, 'flat') : def.model(S, 0).parts).filter(p => p.shapes && p.shapes.length && !p.noexp);
+    const flat = (def.exportParts ? def.exportParts(S, 'flat') : def.model(S, 0).parts).filter(p => ((p.shapes && p.shapes.length) || (p.cuts && p.cuts.length)) && !p.noexp);
 
     /* 1 · the design's own rules */
     guard('Design rules', 'Design rules', () => {
@@ -102,16 +108,16 @@
         if (applies && !applies(S)) return;
         const hit = probs.filter(r => rx.test(r[0]));
         hit.forEach(r => used.add(r));
-        add('Design rules', !hit.length, label, hit.map(r => r[1] && r[1] !== r[0] ? `${r[0]}: ${r[1]}` : r[0]).join(' · '));
+        add('Design rules', !hit.length, label, hit.map(r => r[1] && r[1] !== r[0] ? `${r[0]}: ${r[1]}` : r[0]).join(' · '), hit.some(r => G.severity && G.severity(r) === 'block'));
       });
-      probs.filter(r => !used.has(r)).forEach(r => add('Design rules', false, r[0], r[1] === true ? '' : r[1]));
+      probs.filter(r => !used.has(r)).forEach(r => add('Design rules', false, r[0], r[1] === true ? '' : r[1], G.severity && G.severity(r) === 'block'));
       if (!probs.length && !(RULES[def.id] || []).length) add('Design rules', true, 'No problems found by the generator', '');
     });
 
     /* 2 · the shapes themselves */
     const G2 = 'The parts';
     guard(G2, 'Outlines', () => {
-      const bad = flat.filter(p => p.shapes.some(s => !s.outer || s.outer.length < 3 || s.outer.some(q => !isFinite(q[0]) || !isFinite(q[1]))));
+      const bad = flat.filter(p => p.shapes && p.shapes.some(s => !s.outer || s.outer.length < 3 || s.outer.some(q => !isFinite(q[0]) || !isFinite(q[1]))));
       add(G2, !bad.length, 'Every part has a clean, closed outline', bad.length ? 'Check ' + list(bad.map(p => p.name)) : `${flat.length} part${flat.length === 1 ? '' : 's'} checked`);
     });
     guard(G2, 'Small parts', () => {
@@ -138,7 +144,7 @@
     guard(G3, 'Overlap', () => {
       if (lay === 'nest') { const sk = G._nestStats ? G._nestStats.skipped : 0; add(G3, !sk, 'Every part fits in the nested layout', sk ? `${sk} part${sk === 1 ? ' does' : 's do'} not fit. Allow a wider sheet.` : ''); return; }
       if (lay === 'assembled') return;
-      const bs = P.filter(p => p.shapes && p.shapes.length && !p.noexp).map(p => [p, G.bounds([p])]), hit = [];
+      const bs = P.filter(p => ((p.shapes && p.shapes.length) || (p.cuts && p.cuts.length)) && !p.noexp).map(p => [p, G.bounds([p])]), hit = [];
       for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) { const a = bs[i][1], b = bs[j][1]; if (a.x0 < b.x1 - 0.01 && b.x0 < a.x1 - 0.01 && a.y0 < b.y1 - 0.01 && b.y0 < a.y1 - 0.01) hit.push(`${bs[i][0].name} and ${bs[j][0].name}`); }
       add(G3, !hit.length, 'No two parts overlap in the drawing', hit.length ? list(hit, 2) : '');
     });
@@ -147,18 +153,18 @@
         const big = flat.map(p => { const b = G.bounds([p]); return [p, b.x1 - b.x0, b.y1 - b.y0]; }).filter(([, w, h]) => !((w <= bed[0] && h <= bed[1]) || (w <= bed[1] && h <= bed[0])));
         add(G3, !big.length, `Every part fits a ${bed[0]} × ${bed[1]} mm print bed`, big.length ? list(big.map(([p, w, h]) => `${p.name} (${f(w, 0)} × ${f(h, 0)} mm)`)) : '');
       } else {
-        const b = G.bounds(P.filter(p => p.shapes && p.shapes.length && !p.noexp)), w = b.x1 - b.x0, h = b.y1 - b.y0, ok = (w <= bed[0] && h <= bed[1]) || (w <= bed[1] && h <= bed[0]);
+        const b = G.bounds(P.filter(p => ((p.shapes && p.shapes.length) || (p.cuts && p.cuts.length)) && !p.noexp)), w = b.x1 - b.x0, h = b.y1 - b.y0, ok = (w <= bed[0] && h <= bed[1]) || (w <= bed[1] && h <= bed[0]);
         add(G3, ok, `The drawing fits a ${bed[0]} × ${bed[1]} mm sheet`, `Drawing is ${f(w, 0)} × ${f(h, 0)} mm${ok ? '' : '. Try the Nested layout, or split the job.'}`);
       }
     });
     const fails = items.filter(i => !i.ok).length;
-    return { items, fails, total: items.length, bed, format: fmt };
+    return { items, fails, block: items.filter(i => i.block).length, total: items.length, bed, format: fmt };
   };
 
   /* the dialog: results are drawn as a list with ✓ or ✗ beside each check */
   G.checkHTML = function (res) {
     const groups = []; res.items.forEach(i => { let g = groups.find(x => x.n === i.group); if (!g) groups.push(g = { n: i.group, a: [] }); g.a.push(i); });
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    return groups.map(g => `<section><h3>${esc(g.n)}</h3><ul class="gc">${g.a.map(i => `<li class="${i.ok ? 'ok' : 'no'}"><span class="mk" aria-hidden="true">${i.ok ? '✓' : '✗'}</span><div><b><span class="sr">${i.ok ? 'Passed: ' : 'Needs attention: '}</span>${esc(i.label)}</b>${i.detail ? `<small>${esc(i.detail)}</small>` : ''}</div></li>`).join('')}</ul></section>`).join('');
+    return groups.map(g => `<section><h3>${esc(g.n)}</h3><ul class="gc">${g.a.map(i => `<li class="${i.ok ? 'ok' : i.block ? 'no blk' : 'no'}"><span class="mk" aria-hidden="true">${i.ok ? '✓' : '✗'}</span><div><b><span class="sr">${i.ok ? 'Passed: ' : i.block ? 'Will not work: ' : 'Needs attention: '}</span>${esc(i.label)}</b>${i.detail ? `<small>${esc(i.detail)}</small>` : ''}</div></li>`).join('')}</ul></section>`).join('');
   };
 })();

@@ -5,8 +5,30 @@
 (function () {
   const G = window.GEN = window.GEN || {};
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  G.LIST = [['gears', 'Gears'], ['linkages', 'Linkages'], ['cams', 'Cams'], ['pulleys', 'Pulleys'], ['chains', 'Chains']];
+  G.LIST = [['gears', 'Gears', 'Spur, ring, rack, bevel and worm gears'], ['linkages', 'Linkages', 'Four-bar, slider-crank, multi-link'], ['cams', 'Cams', 'Motion programs and followers'],
+    ['pulleys', 'Pulleys', 'Belt drives and lifting tackle'], ['chains', 'Chains', 'Roller chain and sprockets'], ['hinges', 'Living hinges', 'Cut patterns that let a sheet bend']];
+  const ICON = {   // small line icons for the top bar
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+    more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+    guide: '<path d="M6 3.5h9l3 3v14H6z"/><path d="M9 10h6M9 13.5h6M9 17h4"/>',
+    down: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
+    chev: '<path d="m7 10 5 5 5-5"/>'
+  };
+  const ic = (n, cls) => `<svg class="gi${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
   // the colour theme (paper by default here, or blueprint) is shared with the rest of the site: see js/theme.js
+
+  /* how serious a problem row is: 'block' = the design will not work or cannot be made; 'warn' = it works, but is
+     fragile or works poorly. Generators can say 'block' themselves; older rules are sorted by their label. */
+  const BLOCK = [/^Cannot /, /^Check the structure/, /^Point /, /too big/i, /^Ring too small/, /^Too many starts/, /^Program length/, /^Program does not close/, /^Cusp$/, /^Undercut$/, /^Cuts overlap/, /burn away/, /^No values/, /is tight$/, /^Motor too weak/, /^Rope overloaded/, /^Too stiff/];
+  /* which settings each older problem is about, so they can be highlighted in Properties (newer generators pass keys in the row) */
+  const KEYMAP = {
+    gears: [[/Undercut on gear 1/, ['z1', 'x1']], [/Undercut on gear 2/, ['z2', 'x2']], [/^Pointed teeth/, ['x1', 'x2']], [/^Ring too small/, ['z1', 'z2']], [/^Bore 1 too big/, ['bore1']], [/^Bore 2 too big/, ['bore2']], [/^Contact ratio/, ['z1', 'z2', 'x1', 'x2']]],
+    cams: [[/pressure angle/i, ['Rb', 'e']], [/^Undercut/, ['Rr', 'Rb']], [/^Cusp/, ['Rb']], [/^Bore/, ['bore']]],
+    linkages: [[/^Transmission angle/, ['a', 'b', 'c', 'd']], [/^Cannot assemble/, ['a', 'b', 'c', 'd', 'r', 'l']], [/^Holes too big/, ['hole', 'w']], [/Rod/, ['r', 'l']], [/^Crank/, ['a', 'r']]],
+    pulleys: [[/^Motor too weak/, ['torque']], [/^Rope overloaded/, ['swl']], [/slips/, ['T0', 'mu', 'btype']]]
+  };
+  G.problemKeys = (id, r) => r[3] || (KEYMAP[id] || []).filter(([rx]) => rx.test(String(r[0]))).flatMap(x => x[1]);
+  G.severity = r => r[2] === 'block' ? 'block' : BLOCK.some(rx => rx.test(String(r[0]))) ? 'block' : 'warn';
 
   G.create = function (def) {
     const D = def.defaults, S = Object.assign({}, D), H = readHash();
@@ -15,48 +37,53 @@
     const app = document.getElementById('gen');
     app.innerHTML = `
       <header class="gbar">
-        <a class="gbrand" href="../index.html" title="Back to all mechanisms">Mechanical <b>Notebook</b></a>
-        <nav class="gtabs">${G.LIST.map(([id, name]) => `<a href="${id}.html" class="${id === def.id ? 'on' : ''}">${name}</a>`).join('')}</nav>
+        <a class="gbrand" href="../index.html" title="Mechanical Notebook home"><svg class="glogo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-dasharray="3.2 2.4"/><circle cx="12" cy="12" r="2.2"/></svg><span>Mechanical <b>Notebook</b></span></a>
+        <div class="gpop gswitch"><button id="gswb" class="gswb" aria-haspopup="true" aria-expanded="false" title="Switch generator"><span class="gswk">Generator</span><b>${(G.LIST.find(g => g[0] === def.id) || [, def.title])[1]}</b>${ic('chev', 'gchev')}</button>
+          <div class="gmenu gswm" hidden role="menu">${G.LIST.map(([id, name, d]) => `<a role="menuitem" href="${id}.html"${id === def.id ? ' aria-current="page"' : ''}><b>${name}</b><span>${d || ''}</span></a>`).join('')}
+            <a role="menuitem" class="gall" href="../generators.html">All generators and ready-made starting points →</a></div></div>
         <div class="gacts">
-          <button id="gsearch" data-search title="Search mechanisms, generators and parts (Ctrl/⌘ + K)">Search</button>
-          <button id="gopen" title="Open a saved design (.json)">Open</button>
-          <button id="gsave" title="Download this design as .json">Save</button>
-          <button id="gshare" title="Copy a link that reopens this exact design">Share link</button>
-          <button id="gguide" title="A checklist for making this design: cut list, hardware, fits and assembly">Build guide</button>
-          <div class="gpop"><button id="gexp" class="primary">Export ▾</button>
-            <div class="gmenu" id="gmenu" hidden>
-              <div class="gmh">Layout</div>
-              <div class="gseg" id="glayout"><button data-v="flat" class="on">Laid flat</button><button data-v="nest" title="Pack the parts tightly to save sheet material">Nested</button><button data-v="assembled">As assembled</button></div>
-              <div class="gnest" id="gnest" hidden>
-                <label>Gap between parts<span class="gin"><input type="number" id="gngap" value="2" min="0" max="50" step="0.5"><span>mm</span></span></label>
-                <label>Sheet width<span class="gin"><input type="number" id="gnw" value="" min="0" step="10" placeholder="auto"><span>mm</span></span></label>
-                <label class="gck"><input type="checkbox" id="gnrot" checked> Turn parts to fit</label>
-                <p>Small parts can sit inside the holes of big ones. Leave a gap of at least 2× your kerf.</p>
-              </div>
-              <div class="gmh">Labels (SVG and DXF)</div>
-              <div class="gnest" id="glab">
-                <label class="gck"><input type="checkbox" id="glg" checked> Part list above the drawing</label>
-                <label class="gck"><input type="checkbox" id="gle"> Etch an ID (P1, P2…) on each part</label>
-                <label>Largest ID height<span class="gin"><input type="number" id="gleh" value="5" min="1.5" max="20" step="0.5"><span>mm</span></span></label>
-                <p>Labels sit on their own blue layers (LEGEND_NOTES, ETCH_IDS), so you can switch them off or set them to engrave. They are never cut by the part layers.</p>
-              </div>
-              <div class="gmh">Before exporting</div>
-              <div class="gnest">
-                <label class="gck"><input type="checkbox" id="gchk" checked> Check my design before exporting</label>
-                <button type="button" class="gcheckbtn" id="gcheck">Check my design now</button>
-                <p>Lists what was checked, with a ✓ or ✗ beside each item: the design rules, hole sizes, material around holes, overlaps and sheet size.</p>
-              </div>
-              <button data-x="svg"><b>SVG</b><span>Outlines for laser cutters and vector apps</span></button>
-              <button data-x="dxf"><b>DXF</b><span>CAD and CNC. One layer per part, true circles</span></button>
-              <button data-x="stl"><b>STL</b><span>3D printing. Each part extruded to its thickness</span></button>
-              <p>All files are in millimetres.</p>
+          <button id="gsearch" class="gib" data-search title="Search (Ctrl/⌘ + K)" aria-label="Search">${ic('search')}</button>
+          <button id="gguide" class="gtxt" title="A checklist for making this design: cut list, hardware, fits and assembly">${ic('guide')}<span>Build guide</span></button>
+          <div class="gpop"><button id="gmoreb" class="gib" aria-haspopup="true" aria-expanded="false" title="Open, save, share" aria-label="More: open, save, share">${ic('more')}</button>
+            <div class="gmenu gmore" hidden role="menu">
+              <button role="menuitem" id="gopen"><b>Open a saved design</b><span>A .json file you saved before</span></button>
+              <button role="menuitem" id="gsave"><b>Save this design</b><span>Download it as .json to open later</span></button>
+              <button role="menuitem" id="gshare"><b>Copy a share link</b><span>The link reopens this exact design</span></button>
+              <button role="menuitem" class="gonly-sm" data-act="guide"><b>Build guide</b><span>Cut list, hardware, fits and assembly</span></button>
+              <button role="menuitem" id="gcheck"><b>Check my design</b><span>A list of checks, each with a ✓ or ✗</span></button>
+              <div class="gmthm"><span>Colours</span><span class="gtheme" data-theme-picker></span></div>
+            </div></div>
+          <div class="gpop"><button id="gexp" class="primary" title="Export" aria-haspopup="true" aria-expanded="false">${ic('down')}<span>Export</span></button>
+            <div class="gmenu gexpm" id="gmenu" hidden>
+              <div class="gmhd"><b>Export</b><span>All files are in millimetres</span><button type="button" class="gx" data-close aria-label="Close">×</button></div>
+              <div class="gexpwarn" id="gexpwarn" hidden></div>
+              ${(def.formats || ['svg', 'dxf', 'stl']).map(x => `<button data-x="${x}" class="gfmt"><b>${x.toUpperCase()}</b><span>${{ svg: 'Laser cutters and vector apps (Inkscape, Illustrator, LightBurn)', dxf: 'CAD and CNC. One layer per part', stl: '3D printing. Each part extruded to its thickness' }[x]}</span></button>`).join('')}
+              <label class="gck gchkrow"><input type="checkbox" id="gchk" checked> Check my design before exporting</label>
+              <details class="gopts"><summary>Layout and labels</summary>
+                <div class="gmh">Layout</div>
+                <div class="gseg" id="glayout"><button data-v="flat" class="on">Laid flat</button><button data-v="nest" title="Pack the parts tightly to save sheet material">Nested</button><button data-v="assembled">As assembled</button></div>
+                <div class="gnest" id="gnest" hidden>
+                  <label>Gap between parts<span class="gin"><input type="number" id="gngap" value="2" min="0" max="50" step="0.5"><span>mm</span></span></label>
+                  <label>Sheet width<span class="gin"><input type="number" id="gnw" value="" min="0" step="10" placeholder="auto"><span>mm</span></span></label>
+                  <label class="gck"><input type="checkbox" id="gnrot" checked> Turn parts to fit</label>
+                  <p>Leave a gap of at least 2× your kerf.</p>
+                </div>
+                <div class="gmh">Labels</div>
+                <div class="gnest" id="glab">
+                  <label class="gck"><input type="checkbox" id="glg" checked> Part list above the drawing</label>
+                  <label class="gck"><input type="checkbox" id="gle"> Etch an ID (P1, P2…) on each part</label>
+                  <label>Largest ID height<span class="gin"><input type="number" id="gleh" value="5" min="1.5" max="20" step="0.5"><span>mm</span></span></label>
+                  <p>Labels go on their own blue layers, so you can turn them off or engrave them.</p>
+                </div>
+              </details>
             </div></div>
         </div>
-        <span class="gtheme" data-theme-picker></span>
+        <span class="gtheme gthb" data-theme-picker></span>
         <input type="file" id="gfile" accept=".json,application/json" hidden>
       </header>
       <main class="gwork">
         <div class="gview">
+          <button type="button" class="gstate" id="gstate" hidden></button>
           <canvas id="gcv" aria-label="${def.title} drawing"></canvas>
           <div class="gtitle"><h1>${def.title}</h1><p>${def.subtitle || ''}</p></div>
           <div class="gtool" role="toolbar">
@@ -103,9 +130,18 @@
       custom(build) { const el = document.createElement('div'); el.className = 'gcustom'; ui._host.appendChild(el); build(el, { S, changed, listen: fn => listeners.push(fn), toast: m => toast(m), fit: () => fit(), hl: (node, fn, tag) => { node._hl = fn; node._hlTag = tag; } }); return el; },
       num(key, label, o) {
         o = o || {}; const row = document.createElement('div'); row.className = 'gfld'; row.dataset.key = key;
-        row.innerHTML = `<label title="${o.help ? o.help + ' — ' : ''}Drag left or right to change">${label}</label><div class="gin"><input type="number" step="${o.step || 1}" min="${o.min ?? ''}" max="${o.max ?? ''}"><span>${o.unit || ''}</span></div>`;
+        // min and max can be numbers or functions of the design (S), so a value that cannot be made is never accepted
+        const lim = m => typeof m === 'function' ? m(S) : m;
+        row.innerHTML = `<label title="${o.help ? o.help + ' — ' : ''}Drag left or right to change">${label}</label><div class="gin"><input type="number" step="${o.step || 1}"><span>${o.unit || ''}</span></div>`;
         const inp = row.querySelector('input'), lab = row.querySelector('label'); inp.value = S[key]; if (o.hl) row._hl = o.hl;
-        const set = v => { v = +v; if (!isFinite(v)) return; if (o.min != null) v = Math.max(o.min, v); if (o.max != null) v = Math.min(o.max, v); if (o.int) v = Math.round(v); S[key] = +v.toFixed(6); changed(); };
+        const lims = () => { const lo = lim(o.min), hi = lim(o.max); inp.min = lo ?? ''; inp.max = hi ?? ''; return [lo, hi]; }; lims();
+        const flash = msg => { let p = row.querySelector('.gclamp'); if (!p) { p = document.createElement('p'); p.className = 'gclamp'; p.setAttribute('role', 'status'); row.insertBefore(p, row.querySelector('.ghelp')); } p.textContent = msg; clearTimeout(p._t); p._t = setTimeout(() => p.remove(), 3200); };
+        const set = v => {
+          v = +v; if (!isFinite(v)) return; const [lo, hi] = lims(), u = o.unit && o.unit !== '°' ? ' ' + o.unit : o.unit || '';
+          if (lo != null && v < lo) { v = lo; flash(`Smallest that works: ${lo}${u}${o.why ? ' (' + o.why + ')' : ''}`); }
+          if (hi != null && v > hi) { v = hi; flash(`Largest that works: ${hi}${u}${o.why ? ' (' + o.why + ')' : ''}`); }
+          if (o.int) v = Math.round(v); S[key] = +v.toFixed(6); changed();
+        };
         inp.oninput = () => { if (inp.value !== '') set(inp.value); };
         inp.onchange = () => { inp.value = S[key]; };
         let sc = null;   // drag the label to scrub the value
@@ -113,7 +149,7 @@
         lab.addEventListener('pointermove', e => { if (!sc) return; const st = o.step || 1; set(sc[1] + Math.round((e.clientX - sc[0]) / 6) * st); inp.value = S[key]; });
         lab.addEventListener('pointerup', () => sc = null);
         if (o.help) { const h = document.createElement('p'); h.className = 'ghelp'; h.textContent = o.help; row.appendChild(h); }
-        listeners.push(() => { if (document.activeElement !== inp) inp.value = S[key]; if (o.show) row.hidden = !o.show(S); });
+        listeners.push(() => { lims(); if (document.activeElement !== inp) inp.value = S[key]; if (o.show) row.hidden = !o.show(S); });
         ui._host.appendChild(row); return row;
       },
       seg(key, label, opts, o) {
@@ -171,14 +207,39 @@
 
     /* ---------- results ---------- */
     const cards = document.getElementById('gcards'), warn = document.getElementById('gwarn');
+    const stateBtn = document.getElementById('gstate'), expBtn = document.getElementById('gexp');
+    let probs = [], level = 'ok';
     const showInfo = () => {
       const rows = def.info(S);
-      // warn = true: orange value and listed as a problem; 'soft': orange value only; 2: a problem message only listed on the right
-      cards.innerHTML = rows.filter(r => r[2] !== 2).map(([k, v, w]) => `<div class="gcard${w ? ' warn' : ''}"><span>${k}</span><b>${v}</b></div>`).join('');
-      const probs = rows.filter(r => r[2] && r[2] !== 'soft');   // 'soft' = highlight the value only
-      warn.innerHTML = probs.length ? probs.map(([k, v]) => `<div><b>⚠ ${k}</b> ${v}</div>`).join('') : '<div class="ok">✓ No problems found</div>';
+      // row = [label, value, warn, keys]. warn: true = orange value and a problem; 'soft' = orange value only;
+      // 2 = a problem listed on the right only; 'block' = the design will not work (also listed on the right).
+      // keys (optional): the setting names to highlight in Properties.
+      cards.innerHTML = rows.filter(r => r[2] !== 2 && r[2] !== 'block').map(([k, v, w]) => `<div class="gcard${w ? ' warn' : ''}"><span>${k}</span><b>${v}</b></div>`).join('');
+      probs = rows.filter(r => r[2] && r[2] !== 'soft').map(r => Object.assign(r.slice(), { sev: G.severity(r) }));
+      level = probs.some(p => p.sev === 'block') ? 'block' : probs.length ? 'warn' : 'ok';
+      const order = { block: 0, warn: 1 };
+      probs.sort((a, b) => order[a.sev] - order[b.sev]);
+      warn.className = 'gwarn gw-' + level;
+      warn.innerHTML = probs.length ? `<p class="gwh">${level === 'block' ? '✕ This design won\'t work as it is' : '⚠ Check these before you make it'}</p>` + probs.map(r => `<div class="gp-${r.sev}"><b>${r.sev === 'block' ? '✕' : '⚠'} ${r[0]}</b> ${r[1]}</div>`).join('') : '<div class="ok">✓ No problems found</div>';
+      // the same news on the drawing and on the Export button
+      stateBtn.hidden = false; stateBtn.className = 'gstate gs-' + level;
+      stateBtn.innerHTML = level === 'block' ? `<span class="gsi">✕</span><span><b>Won't work</b> · ${probs.find(p => p.sev === 'block')[0]}</span>` : level === 'warn' ? `<span class="gsi">⚠</span><span><b>${probs.length} thing${probs.length > 1 ? 's' : ''} to check</b> · ${probs[0][0]}</span>` : '<span class="gsi">✓</span><span><b>Ready to make</b></span>';
+      expBtn.classList.toggle('gx-block', level === 'block'); expBtn.classList.toggle('gx-warn', level === 'warn');
+      expBtn.title = level === 'block' ? 'This design won\'t work as it is: see the problems first' : level === 'warn' ? 'Export (there are things to check first)' : 'Export';
+      const eb = document.getElementById('gexpwarn');
+      if (eb) { eb.hidden = level === 'ok'; eb.className = 'gexpwarn gw-' + level; eb.innerHTML = level === 'ok' ? '' : `<b>${level === 'block' ? '✕ This design won\'t work as it is.' : '⚠ Some things need checking.'}</b> ${probs.slice(0, 3).map(p => p[0]).join(' · ')}`; }
+      // highlight the settings each problem is about, with the problem written under the field
+      app.querySelectorAll('.gside .gfld.gbad, .gside .gfld.gwarnf').forEach(r => { r.classList.remove('gbad', 'gwarnf'); const m = r.querySelector('.gfmsg'); if (m) m.remove(); });
+      probs.forEach(p => G.problemKeys(def.id, p).forEach(key => {
+        const r = app.querySelector(`.gside .gfld[data-key="${key}"]`); if (!r || r.hidden) return;
+        const cls = p.sev === 'block' ? 'gbad' : 'gwarnf'; if (r.classList.contains('gbad')) return;
+        r.classList.remove('gwarnf'); r.classList.add(cls);
+        let m = r.querySelector('.gfmsg'); if (!m) { m = document.createElement('p'); m.className = 'gfmsg'; r.insertBefore(m, r.querySelector('.ghelp')); }
+        m.textContent = (p.sev === 'block' ? '✕ ' : '⚠ ') + p[0];
+      }));
       if (window.MNGloss) { MNGloss.apply(cards); MNGloss.apply(warn); }   // underlined terms show a plain-language definition
     };
+    stateBtn.onclick = () => { if (level === 'ok') return; if (innerWidth <= 860) warn.scrollIntoView({ behavior: 'smooth', block: 'center' }); openCheck(null); };
     listeners.push(showInfo);
     listeners.forEach(f => f());
 
@@ -251,7 +312,7 @@
       if (e.code === 'Space') { e.preventDefault(); setPlay(!playing); }
       else if (k === 'f') fit(); else if (k === '1') document.getElementById('g100').click();
       else if (k === 'g' || k === 'c' || k === 'l') { const key = { g: 'grid', c: 'guides', l: 'labels' }[k]; S[key] = S[key] ? 0 : 1; changed(); }
-      else if (k === 'escape') { menu.hidden = true; helpBox.hidden = true; }
+      else if (k === 'escape') { closePops(); helpBox.hidden = true; }
     });
 
     /* ---------- drawing ---------- */
@@ -304,6 +365,11 @@
         ctx.save(); ctx.shadowColor = css('--red'); ctx.shadowBlur = 12 * dpr; ctx.lineWidth = 2.6 / view.s; ctx.strokeStyle = css('--red'); ctx.stroke(); ctx.restore();
       }); });
       M.parts.forEach(p => (p.curves || []).forEach(c => d.path(c, { color: css('--red'), w: 1.2, dash: [5, 3] })));
+      M.parts.forEach(p => {   // cut lines (slits) and closed cut-outs drawn as cuts; engraving in blue
+        (p.cuts || []).forEach(c => { ctx.beginPath(); c.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); if (c.closed) { ctx.closePath(); ctx.fillStyle = css('--canvas'); ctx.fill(); } ctx.lineWidth = 1.1 / view.s; ctx.strokeStyle = ink; ctx.stroke(); });
+        (p.etch || []).forEach(c => d.path(c, { color: '#3b7dd8', w: 1 }));
+        if (p.lines && p.guideLines) p.lines.forEach(c => d.path(c, { color: css('--dim'), w: 1, dash: [6, 4] }));
+      });
       if (M.guides) M.guides(d);
       if (M.overlay) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); M.overlay(ctx, w, h, css); }   // screen-space extras such as a motion chart
       lastParts = M.parts;
@@ -317,8 +383,14 @@
 
     /* ---------- export / file ---------- */
     const menu = document.getElementById('gmenu');
-    document.getElementById('gexp').onclick = e => { e.stopPropagation(); menu.hidden = !menu.hidden; };
-    document.addEventListener('click', e => { if (!menu.hidden && !menu.contains(e.target)) menu.hidden = true; });
+    // the three drop-downs in the top bar (generator switcher, more, export): one open at a time, closed by a click outside or Escape
+    const pops = [...app.querySelectorAll('.gbar .gpop')].map(p => ({ btn: p.querySelector(':scope > button'), m: p.querySelector('.gmenu') }));
+    const closePops = keep => pops.forEach(p => { if (p.m !== keep) { p.m.hidden = true; p.btn.setAttribute('aria-expanded', 'false'); } });
+    pops.forEach(p => p.btn.onclick = e => { e.stopPropagation(); const open = p.m.hidden; closePops(); p.m.hidden = !open; p.btn.setAttribute('aria-expanded', String(open)); });
+    document.addEventListener('click', e => { if (!pops.some(p => p.m.contains(e.target))) closePops(); });
+    app.querySelectorAll('.gmenu [data-close]').forEach(b => b.onclick = () => closePops());
+    app.querySelector('[data-act="guide"]').onclick = () => { closePops(); document.getElementById('gguide').click(); };
+    app.querySelectorAll('.gmore > button').forEach(b => b.addEventListener('click', () => closePops()));
     document.getElementById('glayout').onclick = e => { const b = e.target.closest('button'); if (!b) return; layout = b.dataset.v; document.querySelectorAll('#glayout button').forEach(x => x.classList.toggle('on', x === b)); nestOn(); };
     const nestOn = () => { document.getElementById('gnest').hidden = layout !== 'nest'; };
     const exportParts = () => {
@@ -351,8 +423,8 @@
       cBed = res ? res.bed.slice() : cBed;
       const body = cd.querySelector('.gg-body'), top = body.scrollTop; body.innerHTML = html; body.scrollTop = top;
       const sum = cd.querySelector('.gc-sum'), go = cd.querySelector('[data-a="go"]');
-      if (res) { const ok = res.total - res.fails; sum.innerHTML = res.fails ? `<span class="no">✗ ${res.fails} of ${res.total} checks need attention</span>` : `<span class="ok">✓ All ${res.total} checks passed</span>`; sum.dataset.state = res.fails ? 'no' : 'ok'; }
-      go.hidden = !cFmt; if (cFmt) go.textContent = (res && res.fails ? 'Export ' + cFmt.toUpperCase() + ' anyway' : 'Export ' + cFmt.toUpperCase());
+      if (res) { const ok = res.total - res.fails; sum.innerHTML = res.block ? `<span class="no blk">✕ This design won't work as it is: ${res.block} serious problem${res.block > 1 ? 's' : ''}${res.fails > res.block ? ` and ${res.fails - res.block} more to check` : ''}</span>` : res.fails ? `<span class="no">✗ ${res.fails} of ${res.total} checks need attention</span>` : `<span class="ok">✓ All ${res.total} checks passed</span>`; sum.dataset.state = res.block ? 'blk' : res.fails ? 'no' : 'ok'; }
+      go.hidden = !cFmt; if (cFmt) go.textContent = (res && res.fails ? 'Export ' + cFmt.toUpperCase() + ' anyway' : 'Export ' + cFmt.toUpperCase()); go.classList.toggle('primary', !(res && res.block)); go.classList.toggle('gdanger', !!(res && res.block));
       cd.querySelector('.gc-bl').textContent = cFmt === 'stl' ? 'Largest print bed:' : 'Sheet size:';
       cd.querySelectorAll('[data-bed]').forEach(i => { if (document.activeElement !== i && cBed) i.value = cBed[+i.dataset.bed]; });
     };
@@ -361,7 +433,7 @@
     cd.addEventListener('input', e => { if (e.target.dataset.bed != null) { const v = [...cd.querySelectorAll('[data-bed]')].map(i => Math.max(10, +i.value || 10)); cBed = v; runCheck(); } });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cd.hidden) closeCheck(); });
     document.getElementById('gcheck').onclick = () => { menu.hidden = true; openCheck(null); };
-    menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { menu.hidden = true; if (chk.checked) openCheck(b.dataset.x); else doExport(b.dataset.x); });
+    menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { closePops(); if (chk.checked || level === 'block') openCheck(b.dataset.x); else doExport(b.dataset.x); });
     /* build guide dialog */
     const gd = document.createElement('div'); gd.className = 'gguide'; gd.hidden = true; gd.setAttribute('role', 'dialog'); gd.setAttribute('aria-modal', 'true'); gd.setAttribute('aria-label', 'Build guide');
     gd.innerHTML = '<div class="gg-box"><header><div><h2>Build guide</h2><p></p></div><div class="gg-acts"><button type="button" data-a="print">Print or save as PDF</button><button type="button" data-a="close">Close</button></div></header><div class="gg-body"></div></div>';

@@ -16,23 +16,6 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 .genpage button{font:inherit;cursor:pointer;color:inherit}
 
 /* top bar */
-.gbar{display:flex;align-items:center;gap:22px;padding:0 16px;background:var(--chrome);border-bottom:1px solid var(--line);min-width:0}
-.gbrand{font-family:var(--sans);font-weight:800;font-size:20px;letter-spacing:.02em;text-transform:uppercase;text-decoration:none;color:var(--ink);white-space:nowrap}.gbrand b{color:var(--red);font-weight:800}
-.gtabs{display:flex;gap:2px;height:100%}
-.gtabs a{display:flex;align-items:center;padding:0 14px;text-decoration:none;color:var(--faint);font-weight:600;border-bottom:2px solid transparent}
-.gtabs a.on{color:var(--ink);border-bottom-color:var(--red)}.gtabs a:hover{color:var(--ink)}
-.gacts{margin-left:auto;display:flex;gap:6px;align-items:center}
-.gacts>button,.gpop>button{white-space:nowrap;background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 12px;font-weight:500}
-.gacts>button:hover,.gpop>button:hover{border-color:var(--ink)}
-.gacts .primary{background:var(--red);border-color:var(--red);color:var(--onred);font-weight:600}.gacts .primary:hover{filter:brightness(1.05);border-color:var(--red)}
-.gpop{position:relative}
-.gmenu{position:absolute;right:0;top:calc(100% + 6px);width:300px;background:var(--chrome);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:12px;z-index:20}
-.gmenu .gmh{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-.gmenu .gseg{margin-bottom:10px}
-.gmenu [data-x]{display:block;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;padding:8px 10px}
-.gmenu [data-x]:hover{border-color:var(--line);background:var(--chrome2)}
-.gmenu [data-x] b{display:block;font-size:14px}.gmenu [data-x] span{color:var(--faint);font-size:12px}
-.gmenu p{margin:8px 2px 0;color:var(--faint);font-size:11px}
 
 /* workspace */
 .gwork{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"view side" "res side";min-height:0}
@@ -97,7 +80,6 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 @media(max-width:860px){
   body.genpage{overflow:auto;height:auto}
   .gapp{height:auto;grid-template-rows:auto auto}
-  .gbar{flex-wrap:wrap;gap:8px 14px;padding:8px 12px}.gtabs{height:36px}.gacts{margin-left:0}
   .gwork{grid-template-columns:1fr;grid-template-rows:62vh auto auto;grid-template-areas:"view" "res" "side"}
   .gres{grid-template-columns:1fr}.gwarn{border-left:0;border-top:1px solid var(--line)}
   .gside{border-left:0;overflow:visible}.gtitle p{display:none}
@@ -145,16 +127,7 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 .ghelpbox kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 6px;background:var(--chrome2)}
 .genpage .term{border-bottom-color:var(--warn)}
 .genpage .gloss-tip{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12.5px}
-.gacts{flex-wrap:wrap;row-gap:6px}
 @media(max-width:860px){
-  .gbar{padding:8px 12px;gap:8px 12px}
-  .gbrand{font-size:18px}
-  .gtheme{margin-left:auto}
-  .gtabs{order:3;width:100%;height:40px;border-top:1px solid var(--line)}.gtabs a{flex:1;justify-content:center;padding:0 6px}
-  .gacts{order:4;width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-  .gacts>button,.gpop>button{width:100%;padding:8px 4px;text-align:center}
-  .gpop{grid-column:auto}
-  .gmenu{right:0;width:min(300px,calc(100vw - 24px))}
   .ghelpbox{left:12px;right:12px;bottom:118px}
   .gtool .gkeys span{display:none}
   .gcards{max-height:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:4px 0}
@@ -201,7 +174,7 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 .gg-body .gl{margin:6px 0;padding-left:20px}.gg-body .gl li{margin:4px 0}.gg-body .gl.warn li{color:var(--warn)}.gg-body .gl.warn b{color:var(--warn)}
 .gg-body .gt{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0}.gg-body .gt th{text-align:left;color:var(--faint);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
 .gg-body .gt th,.gg-body .gt td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-@media(max-width:860px){.gacts{grid-template-columns:repeat(3,minmax(0,1fr))}.gguide{padding:0}.gg-box{max-height:100vh;height:100%;border-radius:0}.gg-body .gt{font-size:12px}}
+@media(max-width:860px){.gguide{padding:0}.gg-box{max-height:100vh;height:100%;border-radius:0}.gg-body .gt{font-size:12px}}
 @media print{body.gg-open .gapp,body.gg-open .mnsr{display:none!important}body.genpage.gg-open{overflow:visible;height:auto;background:#fff}.gguide{position:static;background:none;padding:0;display:block}.gg-box{max-height:none;box-shadow:none;border:0;color:#000;background:#fff}.gg-acts{display:none}.gg-body{overflow:visible}.gg-body h3,.gg-box header p{color:#444}.gg-body .gl.warn li,.gg-body .gl.warn b{color:#a00}}
 /* check my design */
 .gcheckbtn{font:inherit;font-size:12px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:6px 10px;cursor:pointer;justify-self:start}.gcheckbtn:hover{border-color:var(--red);color:var(--red)}
@@ -216,3 +189,101 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 .gc .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media print{.gcheckd{display:none!important}}
 .gc li.ok{color:var(--ink)}
+
+/* generators with nothing to animate (living hinges): no play controls */
+.gstatic #gplay,.gstatic #grev,.gstatic .grpm,.gstatic .gtool > i:first-of-type{display:none}
+
+/* ---------- top bar: brand, generator switcher, search, build guide, more (open / save / share), export, colours ----------
+   One row at every width. Menus open below their button and never run off the screen. */
+.gbar{display:flex;align-items:center;gap:10px;height:52px;padding:0 14px;background:var(--chrome);border-bottom:1px solid var(--line);min-width:0;position:relative;z-index:30}
+.gbrand{display:flex;align-items:center;gap:8px;font-family:var(--sans);font-weight:800;font-size:18px;letter-spacing:.02em;text-transform:uppercase;text-decoration:none;color:var(--ink);white-space:nowrap;flex:none}
+.gbrand b{color:var(--red);font-weight:800}
+.glogo{width:22px;height:22px;fill:none;stroke:var(--ink);stroke-width:1.8;flex:none}.glogo circle+circle{fill:var(--red);stroke:none}
+.gi{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.gpop{position:relative;flex:none}
+.gswitch{margin-left:6px;min-width:0;flex:0 1 auto}
+.gswb{display:flex;align-items:center;gap:8px;max-width:100%;background:var(--chrome2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0}
+.gswb .gswk{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+.gswb b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.gswb:hover,.gswb[aria-expanded="true"]{border-color:var(--ink)}
+.gchev{width:16px;height:16px;transition:transform .15s}.gswb[aria-expanded="true"] .gchev{transform:rotate(180deg)}
+.gacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.gacts>button,.gacts>.gpop>button{display:flex;align-items:center;gap:6px;height:34px;white-space:nowrap;background:transparent;border:1px solid var(--line);border-radius:8px;padding:0 12px;font-weight:500}
+.gacts .gib{width:34px;padding:0;justify-content:center}
+.gacts>button:hover,.gacts>.gpop>button:hover,.gacts .gpop>button[aria-expanded="true"]{border-color:var(--ink)}
+.gacts .gpop>button.primary{background:var(--red);border-color:var(--red);color:var(--onred);font-weight:600}.gacts .gpop>button.primary:hover,.gacts .gpop>button.primary[aria-expanded="true"]{filter:brightness(1.05);border-color:var(--red)}
+.gthb{margin-left:4px}
+/* menus */
+.gmenu{position:absolute;top:calc(100% + 8px);right:0;width:320px;max-width:calc(100vw - 16px);max-height:calc(100vh - 70px);overflow:auto;overscroll-behavior:contain;background:var(--chrome);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px;z-index:40}
+.gswm{left:0;right:auto;width:300px}
+.gmenu>a,.gmenu>button{display:block;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;padding:8px 10px;color:var(--ink);text-decoration:none}
+.gmenu>a:hover,.gmenu>button:hover,.gmenu>a:focus-visible,.gmenu>button:focus-visible{background:var(--chrome2);border-color:var(--line);outline:none}
+.gmenu>a b,.gmenu>button b{display:block;font-size:13px;font-weight:600}.gmenu>a span,.gmenu>button span{display:block;color:var(--faint);font-size:11.5px;margin-top:1px}
+.gswm a[aria-current]{border-color:var(--red)}.gswm a[aria-current] b{color:var(--red)}
+.gswm .gall{margin-top:4px;border-top:1px solid var(--line);border-radius:0 0 8px 8px;color:var(--red);font-weight:600;font-size:12px}
+.gmthm{display:none;align-items:center;justify-content:space-between;padding:8px 10px;margin-top:4px;border-top:1px solid var(--line);color:var(--faint);font-size:12px}
+.gonly-sm{display:none!important}
+.gexpm .gmhd{display:flex;align-items:baseline;gap:8px;padding:4px 6px 8px}
+.gexpm .gmhd b{font-size:14px}.gexpm .gmhd span{color:var(--faint);font-size:11.5px;flex:1}
+.gexpm .gx{border:0;background:transparent;font-size:20px;line-height:1;padding:0 4px;color:var(--faint)}.gexpm .gx:hover{color:var(--ink)}
+.gexpm .gfmt{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:10px;margin-bottom:4px;border:1px solid var(--line)}
+.gexpm .gfmt b{font-size:13px;font-family:var(--mono);text-align:center;background:var(--chrome2);border-radius:6px;padding:6px 0}
+.gexpm .gfmt span{margin:0}
+.gexpm .gfmt:hover{border-color:var(--red)}.gexpm .gfmt:hover b{background:var(--red);color:var(--onred)}
+.gchkrow{display:flex;align-items:center;gap:8px;padding:8px 6px 4px;font-size:12px}
+.gopts{margin-top:6px;border-top:1px solid var(--line);padding-top:4px}
+.gopts summary{cursor:pointer;padding:6px;font-size:12px;font-weight:600;color:var(--faint);list-style:none}.gopts summary::-webkit-details-marker{display:none}
+.gopts summary::before{content:'+';display:inline-block;width:14px}.gopts[open] summary::before{content:'−'}
+.gopts summary:hover{color:var(--ink)}
+.gopts .gmh{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;margin:8px 6px 6px}
+.gopts .gseg{margin:0 6px 6px;display:flex;width:calc(100% - 12px);box-sizing:border-box}.gopts .gseg button{flex:1 1 0;min-width:0;padding:6px 4px;white-space:normal;line-height:1.2}
+/* tablets: shorter labels */
+@media(max-width:1100px){.gswb .gswk{display:none}}
+@media(max-width:900px){.gtxt span{display:none}.gacts .gtxt{width:34px;padding:0;justify-content:center}.gbrand span{font-size:16px}}
+/* phones: logo only, colours move into the ⋯ menu, menus span the screen */
+@media(max-width:700px){
+  .gbar{gap:6px;padding:0 8px}
+  .gbrand span{display:none}
+  .gswitch{margin-left:0}
+  .gacts{gap:4px}
+  .gthb{display:none}.gmthm{display:flex}
+  .gonly-sm{display:block!important}.gacts .gtxt{display:none}
+  .gacts .gpop>button.primary{padding:0 10px}
+  .gpop{position:static}
+  .gmenu,.gswm{position:fixed;left:8px;right:8px;top:58px;width:auto;max-width:none;max-height:calc(100vh - 70px);max-height:calc(100dvh - 70px)}
+}
+@media(max-width:340px){.gacts .gpop>button.primary span{display:none}.gacts .gpop>button.primary{width:34px;padding:0;justify-content:center}}
+@media(max-width:860px){.gbar{position:sticky;top:0}}
+
+/* ---------- design status: how serious the problems are (ok / warn / block) ---------- */
+html[data-theme="paper"]{--bad:#c62828;--badbg:rgba(198,40,40,.08);--warnbg:rgba(194,65,12,.08);--okbg:rgba(47,125,50,.08)}
+html[data-theme="blueprint"]{--bad:#ff8a80;--badbg:rgba(255,138,128,.14);--warnbg:rgba(255,177,153,.12);--okbg:rgba(155,226,155,.12)}
+.gstate{position:absolute;top:12px;right:14px;z-index:6;display:flex;align-items:center;gap:8px;max-width:min(420px,calc(100% - 28px));padding:7px 12px 7px 8px;border-radius:999px;border:1.5px solid var(--line);background:var(--chrome);box-shadow:var(--shadow);font-size:12.5px;text-align:left;cursor:default}
+.gstate span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.gstate .gsi{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-weight:700;flex:none;color:#fff}
+.gs-ok{border-color:var(--ok)}.gs-ok .gsi{background:var(--ok)}
+.gs-warn{border-color:var(--warn);background:var(--chrome);cursor:pointer}.gs-warn .gsi{background:var(--warn)}
+.gs-block{border-color:var(--bad);cursor:pointer;animation:gpulse 1.6s ease-out 1}.gs-block .gsi{background:var(--bad)}.gs-block b{color:var(--bad)}
+.gs-warn:hover,.gs-block:hover{filter:brightness(1.03);text-decoration:underline}
+@keyframes gpulse{0%{box-shadow:0 0 0 0 var(--bad)}100%{box-shadow:0 0 0 10px transparent}}
+/* the problem list next to the results */
+.gwarn.gw-warn{box-shadow:inset 3px 0 0 var(--warn);background:var(--warnbg)}
+.gwarn.gw-block{box-shadow:inset 3px 0 0 var(--bad);background:var(--badbg)}
+.gwarn .gwh{margin:0 0 6px;font-weight:700;font-size:12.5px}.gw-warn .gwh{color:var(--warn)}.gw-block .gwh{color:var(--bad)}
+.gwarn .gp-block b{color:var(--bad)}
+/* settings that cause a problem */
+.gside .gfld.gbad .gin{border-color:var(--bad);box-shadow:0 0 0 2px var(--badbg)}.gside .gfld.gbad>label{color:var(--bad)}
+.gside .gfld.gwarnf .gin{border-color:var(--warn);box-shadow:0 0 0 2px var(--warnbg)}.gside .gfld.gwarnf>label{color:var(--warn)}
+.gfmsg{grid-column:1/-1;margin:3px 0 0;font-size:11.5px;font-weight:600}.gbad .gfmsg{color:var(--bad)}.gwarnf .gfmsg{color:var(--warn)}
+.gclamp{grid-column:1/-1;margin:3px 0 0;font-size:11.5px;color:var(--bad);font-weight:600;animation:gfade 3.2s forwards}
+@keyframes gfade{0%,80%{opacity:1}100%{opacity:0}}
+/* export button and menu */
+.gacts .gpop>button.primary.gx-warn::after,.gacts .gpop>button.primary.gx-block::after{content:'!';display:grid;place-items:center;width:16px;height:16px;border-radius:50%;font-size:11px;font-weight:800;background:var(--chrome);color:var(--warn);margin-left:2px}
+.gacts .gpop>button.primary.gx-block{background:var(--chrome);color:var(--bad);border-color:var(--bad)}
+.gacts .gpop>button.primary.gx-block::after{content:'✕';background:var(--bad);color:#fff}
+.gexpwarn{margin:0 4px 8px;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.4}
+.gexpwarn.gw-warn{background:var(--warnbg);border:1px solid var(--warn)}.gexpwarn.gw-block{background:var(--badbg);border:1px solid var(--bad)}.gexpwarn.gw-block b{color:var(--bad)}.gexpwarn.gw-warn b{color:var(--warn)}
+.gc li.blk .mk{background:var(--bad)!important;color:#fff}.gc-sum .blk{color:var(--bad);font-weight:700}
+.gg-acts .gdanger{border:1px solid var(--bad);color:var(--bad);background:transparent}
+@media(max-width:860px){.gstate{top:40px;left:14px;right:auto;font-size:12px;max-width:calc(100% - 28px)}}
+.gc li.blk b{color:var(--bad)}

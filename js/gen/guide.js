@@ -94,6 +94,13 @@
         'Fit each sprocket to its shaft with a key, pin or set screw. Sprockets on one shaft turn together.',
         'Line the sprockets up in one plane and fit the chain. It should sag a little on its slack side, about 2% of the span.',
         'Add a tensioner (a spring-loaded idler on the slack side) for long runs. Lubricate the chain with light oil.'];
+    },
+    hinges(S) {
+      return [S.out === 'pattern' ? 'Open the pattern file and your own drawing in the same app (Inkscape, Illustrator, LightBurn, or your CAD). Both are in millimetres, so paste the pattern without scaling.' : 'Cut one test piece first, in the same sheet you will use for the real part.',
+        S.out === 'pattern' ? 'Line the green hinge area outline up with the place that should bend. The cuts usually run the full height of the part, from edge to edge.' : 'Cut the slits before the outline, so the piece cannot shift while the small cuts are made.',
+        S.cut === 'slot' ? 'The slits are closed slots: cut them on the line (no kerf offset), or with a CNC cutter the same size as the slot width.' : 'Cut the slits as single lines (one pass). Do not run an inside or outside kerf offset on them, only on the outline.',
+        'Bend slowly by hand, a little at a time. Wood bends best across the grain of the face layer; warm or slightly damp plywood bends further.',
+        'If it cracks, make the slits longer, the rows further apart or the bridges shorter. If it is too floppy, do the opposite. A test sheet shows all of these side by side.'];
     }
   };
   const TIPS = {
@@ -101,7 +108,8 @@
     linkages: 'Tip: laser-cut acrylic links can crack at pivot holes. Keep holes at least their own diameter away from the edge.',
     cams: 'Tip: cut the cam a few percent oversize and sand to the follower contact; surface finish matters more than the last tenth of a millimetre.',
     pulleys: 'Tip: a V-groove grips much better than a flat pulley. Build a groove from three layers: flange, narrow middle, flange.',
-    chains: 'Tip: laser-cut chain wears quickly; for real loads use a bought roller chain of the same pitch and cut only the sprockets.'
+    chains: 'Tip: laser-cut chain wears quickly; for real loads use a bought roller chain of the same pitch and cut only the sprockets.',
+    hinges: 'Tip: plywood and MDF bend well; acrylic cracks, so use thin acrylic, wide spacing and very long slits, or choose a flexible material. For laser cutting, cut the slits as single lines and let the kerf make the gap.'
   };
 
   G.buildGuide = function (def, S) {

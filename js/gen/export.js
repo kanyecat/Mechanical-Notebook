@@ -16,7 +16,7 @@
   });
   G.bounds = parts => {
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; const add = ([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
-    parts.forEach(p => { (p.shapes || []).forEach(s => { s.outer.forEach(add); (s.circles || []).forEach(c => { add([c.x - c.r, c.y - c.r]); add([c.x + c.r, c.y + c.r]); }); }); (p.curves || []).forEach(c => c.forEach(add)); (p.lines || []).forEach(c => c.forEach(add)); });
+    parts.forEach(p => { (p.shapes || []).forEach(s => { s.outer.forEach(add); (s.circles || []).forEach(c => { add([c.x - c.r, c.y - c.r]); add([c.x + c.r, c.y + c.r]); }); }); (p.curves || []).forEach(c => c.forEach(add)); (p.lines || []).forEach(c => c.forEach(add)); (p.cuts || []).forEach(c => c.pts.forEach(add)); (p.etch || []).forEach(c => c.forEach(add)); });
     return x0 > x1 ? { x0: -50, y0: -50, x1: 50, y1: 50 } : { x0, y0, x1, y1 };
   };
 
@@ -221,7 +221,7 @@
       const T = q => { const r = rotPt(kq, q); return [r[0] + dx - 0, r[1] + dy - 0]; };
       const np = Object.assign({}, it.p, {
         shapes: it.p.shapes.map(s => ({ outer: s.outer.map(T), holes: (s.holes || []).map(h => h.map(T)), circles: (s.circles || []).map(c => { const [x, y] = T([c.x, c.y]); return { x, y, r: c.r }; }) })),
-        curves: [], twist: it.p.twist ? Object.assign({}, it.p.twist, { c: T(it.p.twist.c || [0, 0]) }) : undefined
+        curves: [], cuts: (it.p.cuts || []).map(c => ({ pts: c.pts.map(T), closed: c.closed })), etch: (it.p.etch || []).map(c => c.map(T)), twist: it.p.twist ? Object.assign({}, it.p.twist, { c: T(it.p.twist.c || [0, 0]) }) : undefined
       });
       moved.set(it.p, np);
     });
@@ -328,6 +328,8 @@
       });
       (p.curves || []).forEach(c => out += `    <polyline points="${c.map(([x, y]) => tx(x) + ',' + ty(y)).join(' ')}" stroke="#c00"/>\n`);
       (p.lines || []).forEach(c => out += `    <polyline points="${c.map(([x, y]) => tx(x) + ',' + ty(y)).join(' ')}" stroke="${p.color || '#0050c8'}"/>\n`);
+      (p.cuts || []).forEach(c => out += c.closed ? `    <path d="${path(c.pts)}"/>\n` : `    <polyline points="${c.pts.map(([x, y]) => tx(x) + ',' + ty(y)).join(' ')}"/>\n`);   // cut lines (slits): same colour as outlines
+      (p.etch || []).forEach(c => out += `    <polyline points="${c.map(([x, y]) => tx(x) + ',' + ty(y)).join(' ')}" stroke="#0050c8"/>\n`);   // engrave, not cut
       out += '  </g>\n';
     });
     return out + '</svg>\n';
@@ -338,9 +340,10 @@
     const L = [], add = (...kv) => { for (let i = 0; i < kv.length; i += 2) L.push(kv[i], kv[i + 1]); };
     const layer = n => n.replace(/[^\w-]/g, '_').toUpperCase().slice(0, 31);
     add(0, 'SECTION', 2, 'HEADER', 9, '$ACADVER', 1, 'AC1009', 9, '$INSUNITS', 70, 4, 0, 'ENDSEC');
-    add(0, 'SECTION', 2, 'TABLES', 0, 'TABLE', 2, 'LAYER', 70, parts.length + 1);
+    add(0, 'SECTION', 2, 'TABLES', 0, 'TABLE', 2, 'LAYER', 70, parts.length + 2);
     parts.forEach((p, i) => add(0, 'LAYER', 2, layer(p.name), 70, 0, 62, p.layerColor || (i % 6) + 1, 6, 'CONTINUOUS'));
     add(0, 'LAYER', 2, 'PATHS', 70, 0, 62, 1, 6, 'CONTINUOUS');
+    if (parts.some(p => p.etch && p.etch.length)) add(0, 'LAYER', 2, 'ENGRAVE', 70, 0, 62, 5, 6, 'CONTINUOUS');
     add(0, 'ENDTAB', 0, 'ENDSEC', 0, 'SECTION', 2, 'ENTITIES');
     const poly = (pts, lay, closed) => { add(0, 'POLYLINE', 8, lay, 66, 1, 70, closed ? 1 : 0); pts.forEach(([x, y]) => add(0, 'VERTEX', 8, lay, 10, r4(x), 20, r4(y), 30, 0)); add(0, 'SEQEND', 8, lay); };
     parts.forEach(p => {
@@ -348,6 +351,8 @@
       p.shapes.forEach(s => { poly(s.outer, lay, true); (s.holes || []).forEach(h => poly(h, lay, true)); (s.circles || []).forEach(c => add(0, 'CIRCLE', 8, lay, 10, r4(c.x), 20, r4(c.y), 30, 0, 40, r4(c.r))); });
       (p.curves || []).forEach(c => poly(c, 'PATHS', false));
       (p.lines || []).forEach(c => poly(c, lay, false));
+      (p.cuts || []).forEach(c => poly(c.pts, lay, c.closed));
+      (p.etch || []).forEach(c => poly(c, 'ENGRAVE', false));
     });
     add(0, 'ENDSEC', 0, 'EOF');
     return L.join('\n') + '\n';

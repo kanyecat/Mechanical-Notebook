@@ -205,12 +205,28 @@
   MM.tricksHTML = tr => {
     const order = ['Laser cutting', 'CNC routing', '3D printing', 'Any process'], groups = {};
     tr.items.forEach(it => { const p = it.p || 'Any process', m = it.m || 'Any material'; ((groups[p] = groups[p] || {})[m] = groups[p][m] || []).push(it); });
-    const card = it => `<figure class="trk"><svg viewBox="0 0 220 162" role="img" aria-label="${it.t}">${it.svg}</svg><figcaption><b>${it.t}</b><span>${it.x}</span>${it.tags ? `<span class="bdgs">${it.tags.map(x => `<i class="bdg">${x}</i>`).join('')}</span>` : ''}</figcaption></figure>`;
+    const bdgs = it => it.tags ? `<span class="bdgs">${it.tags.map(x => `<i class="bdg">${x}</i>`).join('')}</span>` : '';
+    // a card with several designs is a small slideshow: arrows, dots, and its own caption for each design
+    const slides = it => { const n = it.slides.length; return `<figure class="trk trs" data-i="0"><div class="trsv" tabindex="0" aria-roledescription="carousel" aria-label="${it.t}: ${n} designs">${it.slides.map((sl, i) => `<svg viewBox="0 0 220 162" role="img" aria-label="${it.t}: ${sl.t}"${i ? ' hidden' : ''}>${sl.svg}</svg>`).join('')}
+      <div class="trnav"><button type="button" class="trp" aria-label="Previous design">‹</button><span class="trdots">${it.slides.map((sl, i) => `<button type="button" aria-label="${i + 1}: ${sl.t}"${i ? '' : ' aria-current="true"'}></button>`).join('')}</span><button type="button" class="trn" aria-label="Next design">›</button></div></div>
+      <figcaption><b>${it.t}</b><span>${it.x}</span>${it.slides.map((sl, i) => `<div class="trcap"${i ? ' hidden' : ''}><b class="trst"><i>${i + 1} / ${n}</i>${sl.t}</b><span>${sl.x}</span>${sl.gen ? `<a class="trgen" href="${sl.gen}">Make this in the living hinge generator →</a>` : ''}</div>`).join('')}${bdgs(it)}</figcaption></figure>`; };
+    const card = it => it.slides ? slides(it) : `<figure class="trk"><svg viewBox="0 0 220 162" role="img" aria-label="${it.t}">${it.svg}</svg><figcaption><b>${it.t}</b><span>${it.x}</span>${bdgs(it)}</figcaption></figure>`;
     const present = order.filter(p => groups[p]);
     const chips = present.filter(p => p !== 'Any process').length > 1 ? `<div class="filters trf" role="group" aria-label="Show ways for one process"><button type="button" class="on" data-p="">All</button>${present.filter(p => p !== 'Any process').map(p => `<button type="button" data-p="${p}">${p}</button>`).join('')}</div>` : '';
     return `<section class="box tricks" id="tricks"><h3>${tr.title}</h3>${tr.intro ? `<p class="xpintro">${tr.intro}</p>` : ''}<div class="trleg" aria-label="Colour key"><span><i class="lg-p"></i>stays in place</span><span><i class="lg-a"></i>gets inserted</span><span><i class="lg-k"></i>hole you can see through</span><span><i class="lg-w"></i>inside of a cut or engraving</span><span><i class="lg-h"></i>guide or motion line</span></div>${chips}${present.map(p => `<div class="trgrp" data-p="${p}"><h4>${p === 'Any process' ? 'Any process' : p}</h4>${Object.keys(groups[p]).map(m => `<h5>${m}</h5><div class="trks">${groups[p][m].map(card).join('')}</div>`).join('')}</div>`).join('')}</section>`;
   };
-  MM.tricksInit = root => { const box = root.querySelector('#tricks'); if (!box) return; box.querySelectorAll('.trf button').forEach(b => b.onclick = () => { box.querySelectorAll('.trf button').forEach(x => x.classList.toggle('on', x === b)); box.querySelectorAll('.trgrp').forEach(g => { g.hidden = !!b.dataset.p && g.dataset.p !== b.dataset.p && g.dataset.p !== 'Any process'; }); }); };
+  MM.tricksInit = root => { const box = root.querySelector('#tricks'); if (!box) return; box.querySelectorAll('.trf button').forEach(b => b.onclick = () => { box.querySelectorAll('.trf button').forEach(x => x.classList.toggle('on', x === b)); box.querySelectorAll('.trgrp').forEach(g => { g.hidden = !!b.dataset.p && g.dataset.p !== b.dataset.p && g.dataset.p !== 'Any process'; }); })
+    box.querySelectorAll('.trs').forEach(fig => {
+      const svgs = [...fig.querySelectorAll('.trsv > svg')], caps = [...fig.querySelectorAll('.trcap')], dots = [...fig.querySelectorAll('.trdots button')], n = svgs.length;
+      const go = i => { i = (i + n) % n; fig.dataset.i = i; svgs.forEach((s, k) => s.toggleAttribute('hidden', k !== i)); caps.forEach((c, k) => c.hidden = k !== i); dots.forEach((d, k) => d.toggleAttribute('aria-current', k === i)); };
+      fig.querySelector('.trp').onclick = () => go(+fig.dataset.i - 1); fig.querySelector('.trn').onclick = () => go(+fig.dataset.i + 1);
+      dots.forEach((d, k) => d.onclick = () => go(k));
+      const sv = fig.querySelector('.trsv'); let x0 = null;
+      sv.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') { go(+fig.dataset.i - 1); e.preventDefault(); } if (e.key === 'ArrowRight') { go(+fig.dataset.i + 1); e.preventDefault(); } });
+      sv.addEventListener('pointerdown', e => { if (!e.target.closest('button')) x0 = e.clientX; });
+      sv.addEventListener('pointerup', e => { if (x0 != null && Math.abs(e.clientX - x0) > 40) go(+fig.dataset.i + (e.clientX < x0 ? 1 : -1)); x0 = null; });
+    });
+  };
   MM.fabCat = () => (window.MM_FAB || []).filter(c => MM.registry[c.slug]);
   MM.mount = function (slug) {
     const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug), isFab = (window.MM_FAB || []).some(c => c.slug === slug);

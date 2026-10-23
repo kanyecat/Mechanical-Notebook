@@ -31,11 +31,27 @@ node serve.js        # or: yarn dev  →  http://localhost:5173
 | `js/site.js` | Top menu (mobile menu and Generators drop-down) |
 | `js/analytics.js` | Google Analytics 4 visit counting. Paste your Measurement ID into `GA_ID` to turn it on |
 | `js/engine.js`, `js/learn.js` | Shared drawing engine and the "Do the math" panel |
-| `generators/`, `js/gen/` | Gear, linkage, cam, pulley and chain generators with SVG / DXF / STL export |
+| `generators/`, `js/gen/` | Gear, linkage, cam, pulley, chain and living hinge generators with SVG / DXF / STL export |
+| `js/hinge-pattern.js` | Living hinge cut patterns (straight, wavy, torsion, diamond), shared by the hinge generator and the fabrication cards |
 | `test/` | `node test/harness.js` checks every mechanism for errors and NaNs |
 
 ## Generators
 
+Every generator shows its state on the drawing: ✓ ready to make, ⚠ things to check, or ✕ won't work. Settings that
+cause a problem are outlined in Properties with the problem written under them, number fields refuse values that
+cannot be made (with a note saying why), and Export shows the same state. A design that won't work can still be
+exported from the check dialog (Export anyway). Problem rows from `info(S)` can carry `'block'` and a list of setting
+keys; older rules are sorted by `G.severity` and `KEYMAP` in `js/gen/core.js`.
+
+- **Living hinges** – cut patterns that let a stiff sheet bend, following tested lattice hinges: straight lattice,
+  meander, torsion (H) links, wave, cross and fillet lattices, diamonds and beehive. Pick the material (basswood, birch
+  plywood, MDF, cast acrylic, card) and the bend the part must make; a rough torsion model estimates how far it bends
+  before cracking and flags designs that are too stiff, fragile or impossible. Make a test piece, a test sheet (one size changed per strip, each engraved with its settings), or just the
+  pattern with the hinge area outline on its own green layer, to paste into your own drawing. Slits are exported as
+  single cut lines (best for a laser: one pass, the kerf makes the gap) or as closed slots (for a CNC router).
+  Checks that the strips and bridges left between cuts survive the kerf. Files are in millimetres: SVG (width and
+  height in mm, so Inkscape, Illustrator and LightBurn import at true size) and DXF R12 (cuts on the part layer,
+  engraving on ENGRAVE).
 - **Gears** – involute spur gears (any module, 14.5° / 20° / 25° pressure angle, profile shift, backlash),
   meshing with a second spur gear, an internal ring gear or a rack. Shows ratio, centre distance, contact ratio
   and undercut warnings.
@@ -92,7 +108,7 @@ The home page is five room cards (Mechanisms, Elements, Generators, Combine, Fab
 
 1. Add an entry to `js/fab-catalog.js` (slug, number, name, category, process list, one-line function, notes, applications, fun fact).
 2. Create `js/fab/<slug>.js` calling `MM.register({ slug, view, params, draw, readout, panels })`. `MM.cycle(a)` gives a 0 to 1 and back animation, and `g.dim(...)` draws dimension lines.
-3. Optionally add a list of "ways to make it better" cards for it in `js/fab-tricks.js` (title, text, the process `p` and material `m` it sits under, tag badges, and a small 3D drawing built with the helpers at the top of that file). They appear under the animation, grouped by process then material, with filter buttons. The drawings render like a CAD view: hidden parts are fully hidden, `S.hole` / `S.slot` / `S.engrave` really cut into the parts drawn before them (walls and floor in darker gray, see-through holes dark), and shapes wrapped in `S.u(...)` are one body so no line is drawn where they touch. Colours: `p` stays in place (white), `a` is inserted (orange).
+3. Optionally add a list of "ways to make it better" cards for it in `js/fab-tricks.js` (title, text, the process `p` and material `m` it sits under, tag badges, and a small 3D drawing built with the helpers at the top of that file). They appear under the animation, grouped by process then material, with filter buttons. Cards with several designs have `slides: [{ t, x, g, gen }]` instead of `g` and show as a small slideshow (arrows, dots, swipe); `gen` is an optional link into a generator. The drawings render like a CAD view: hidden parts are fully hidden, `S.hole` / `S.slot` / `S.engrave` really cut into the parts drawn before them (walls and floor in darker gray, see-through holes dark), and shapes wrapped in `S.u(...)` are one body so no line is drawn where they touch. Colours: `p` stays in place (white), `a` is inserted (orange).
 4. Run `node build.js`. The page, room card, filter, search entry and footer link appear on their own.
 
 ## Add a mechanism or element

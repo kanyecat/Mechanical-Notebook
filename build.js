@@ -34,6 +34,7 @@ const nav = (p, here) => `<a class="skip" href="#app">Skip to content</a>
         <a href="${p}generators/cams.html"><b>Cam generator</b><span>Motion programs, followers, checks</span></a>
         <a href="${p}generators/pulleys.html"><b>Pulley generator</b><span>Belt drives, idlers, lifting tackle</span></a>
         <a href="${p}generators/chains.html"><b>Chain and sprocket generator</b><span>Roller chain, sprockets, multi-stage drives</span></a>
+        <a href="${p}generators/hinges.html"><b>Living hinge generator</b><span>Slit, wave, torsion and diamond patterns</span></a>
       </div></div>
     <a href="${p}combine.html"${here === 'c' ? ' aria-current="page"' : ''}>Combine</a>
     <a href="${p}fabrication.html"${here === 'f' ? ' aria-current="page"' : ''}>Fabrication</a>
@@ -49,7 +50,7 @@ const foot = p => `<footer class="foot"><div class="footin">
     <p class="fsmall">Made by Joo Hee Kim · <a href="${p}about.html">About this site</a></p></div>
   <div class="fcol"><h4>Explore</h4>
     <a href="${p}mechanisms.html">Mechanisms</a><a href="${p}elements.html">Mechanical elements</a><a href="${p}fabrication.html">Fabrication techniques</a><a href="${p}combine.html">Combine mechanisms</a>
-    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a><a href="${p}generators/chains.html">Chain generator</a></div>
+    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a><a href="${p}generators/chains.html">Chain generator</a><a href="${p}generators/hinges.html">Living hinge generator</a></div>
   <div class="fcol"><h4>Project</h4>
     <a href="${REPO}" rel="noopener">Source code on GitHub</a><span>Free and open source (MIT licence)</span>
     <span>Inspired by <i>507 Mechanical Movements</i> by Henry T. Brown (1868)</span><span>Visits are counted with Google Analytics</span></div>
@@ -64,7 +65,7 @@ function detail(slug, dir, folder, here) {
   const extra = (fs.existsSync(R('js/learn.js')) ? '<script src="../js/learn.js"></script>' : '') + (mathSlugs.includes(slug) ? `<script src="../js/math/${slug}.js"></script>` : '');
   fs.mkdirSync(R(folder), { recursive: true });
   fs.writeFileSync(R(folder, slug + '.html'), head('Mechanical Notebook', '../', null, `${folder}/${slug}.html`) + nav('../', here) + '<main class="sheet" id="app"></main>' + foot('../')
-    + tail('../', engine('../', dir === 'mechanisms' ? mech : dir === 'fab' ? fabSlugs : elems, dir) + extra + (dir === 'fab' ? '<script src="../js/fab-tricks.js"></script>' : '') + `<script>MM.mount('${slug}')</script>`));
+    + tail('../', engine('../', dir === 'mechanisms' ? mech : dir === 'fab' ? fabSlugs : elems, dir) + extra + (dir === 'fab' ? '<script src="../js/hinge-pattern.js"></script><script src="../js/fab-tricks.js"></script>' : '') + `<script>MM.mount('${slug}')</script>`));
 }
 mech.forEach(s => detail(s, 'mechanisms', 'pages', 'm'));
 elems.forEach(s => detail(s, 'elements', 'elements', 'e'));
@@ -80,7 +81,8 @@ const GENS = {
   linkages: ['Linkage generator', 'Four-bar, slider-crank and multi-link mechanisms with coupler curves, link designs and export.', 'four-bar slider crank multi link jansen coupler curve path trace grashof transmission angle rocker walking leg'],
   cams: ['Cam generator', 'Program rise, dwell and fall motions, pick a follower, and check pressure angle and undercut.', 'cam follower motion program cycloidal harmonic dwell rise fall lift pressure angle undercut roller flat knife'],
   pulleys: ['Pulley generator', 'Belt drives with idlers and shared shafts, and block-and-tackle lifting systems.', 'belt pulley idler wrap angle slip tension block and tackle lifting load sheave rope timing v-belt'],
-  chains: ['Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes with attachments, multiple chains and sprocket designs.', 'roller chain sprocket ansi iso pitch attachment plate tab multi strand idler tensioner skeleton']
+  chains: ['Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes with attachments, multiple chains and sprocket designs.', 'roller chain sprocket ansi iso pitch attachment plate tab multi strand idler tensioner skeleton'],
+  hinges: ['Living hinge generator', 'Laser-cut flexure patterns that let a stiff sheet bend: straight, meander, torsion, wave, cross and fillet lattices, diamonds and beehive. Estimates how far it bends in your material and flags fragile or too-stiff designs.', 'living hinge flexure kerf bending lattice slit pattern straight meander serpentine torsion wave cross fillet diamond beehive honeycomb basswood birch plywood mdf acrylic bend laser cut flex test sheet pattern only svg dxf']
 };
 const PRESETS = [   // deep links into a generator: [generator, title, description, settings, extra words]
   ['gears', 'Bevel gears', 'A pair of cone gears for shafts that meet at an angle, cut as stacked layers or one tapered part.', { mode: 'bevel' }, 'bevel miter right angle tredgold'],
@@ -92,6 +94,8 @@ const PRESETS = [   // deep links into a generator: [generator, title, descripti
   ['gears', 'Skeleton gears', 'Gears with spokes or holes cut in the body to save material and weight.', { gdesign: 'spokes' }, 'skeleton spokes holes lightweight pockets teardrop swirl'],
   ['linkages', 'Slider-crank', 'A crank, rod and slider, with the stroke and time ratio.', { kind: 'slider' }, 'slider crank piston engine stroke'],
   ['linkages', 'Multi-link builder', 'Build your own linkage from pivots and links and trace any point.', { kind: 'multi' }, 'multi link jansen walking leg sixbar'],
+  ['hinges', 'Torsion hinge test sheet', 'Four torsion hinges with 5, 10, 20 and 30 mm links side by side, to find the one that bends best in your sheet.', { pat: 'torsion', out: 'sheet', vary: 'L', vals: '5, 10, 20, 30', W: 30 }, 'torsion living hinge test link length'],
+  ['hinges', 'Wavy slit hinge pattern', 'Just the pattern, ready to paste over the place on your part that should bend.', { pat: 'wave', out: 'pattern' }, 'wavy slit pattern paste'],
   ['pulleys', 'Block and tackle', 'Lifting systems with mechanical advantage, effort and rope pulled.', { mode: 'lift' }, 'block tackle lifting hoist winch mechanical advantage']
 ];
 const gurl = (id, preset) => `generators/${id}.html` + (preset ? '#' + encodeURIComponent(JSON.stringify(preset)) : '');
@@ -126,7 +130,8 @@ const gens = [
   ['linkages', 'four-bar', 'Linkage generator', 'Four-bar and slider-crank linkages, or build your own multi-link mechanism and trace the path of any point.'],
   ['cams', 'cam-follower', 'Cam generator', 'Program a motion step by step, choose a follower, and check the pressure angle and undercut before you cut.'],
   ['pulleys', 'belt-pulleys', 'Pulley generator', 'Place pulleys anywhere, join them with belts and hang loads on them, or rig a block and tackle. See speeds, grip and whether it can lift.'],
-  ['chains', 'roller-chain', 'Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes. Place sprockets anywhere, run several chains, pick skeleton or swirl sprockets and cut every part.']
+  ['chains', 'roller-chain', 'Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes. Place sprockets anywhere, run several chains, pick skeleton or swirl sprockets and cut every part.'],
+  ['hinges', null, 'Living hinge generator', 'Make a flat, stiff sheet bend. Pick one of eight tested lattice patterns and your material, see how far it will bend before it cracks, and export a test piece, a test sheet or just the pattern.', 'svg']
 ];
 const live = s => `<canvas data-s="${s}" data-live data-box aria-hidden="true"></canvas>`;
 const ROOMS = [
@@ -180,11 +185,17 @@ roomPage('fabrication.html', 'f', 'Room 5', 'Fabrication', 'How to design parts 
   `<div class="filterrow"><div class="fl"><span class="fll">Group</span><div class="filters" id="filters" role="group" aria-label="Filter techniques by group"></div></div>
    <div class="fl"><span class="fll">Made by</span><div class="filters" id="pfilters" role="group" aria-label="Filter techniques by how the part is made"></div></div></div>
    <div class="grid" id="grid" data-room="fabrication"></div>`, engine('', fabSlugs, 'fab') + '<script>MM.landing()</script>');
-const genSlugs = [...new Set(gens.map(g => g[1]))];
+const genSlugs = [...new Set(gens.map(g => g[1]).filter(Boolean))];
+const HINGE = (() => { const w = {}; new Function('window', fs.readFileSync(R('js/hinge-pattern.js'), 'utf8'))(w); return w.MN_HINGE; })();
+const hingePreview = () => {   // a drawn test piece for the generator card
+  const r = HINGE.make({ pat: 'straight', W: 40, H: 46, L: 14, g: 3, d: 2.4, cut: 'line', open: 1, e: 0 }), ox = 30, oy = 7, k = 1.15;
+  const X = x => (ox + x * k).toFixed(1), Y = y => (oy + (46 - y) * k).toFixed(1);
+  return `<svg class="hprev" viewBox="0 0 160 66" aria-hidden="true"><rect x="${X(-22)}" y="${Y(46)}" width="${(84 * k).toFixed(1)}" height="${(46 * k).toFixed(1)}" rx="1"/>${r.cuts.map(c => `<polyline points="${c.pts.map(q => X(q[0]) + ',' + Y(q[1])).join(' ')}"/>`).join('')}</svg>`;
+};
 roomPage('generators.html', 'g', 'Room 3', 'Generators', 'Design your own parts, check them for problems, and export files for laser cutting, CNC or 3D printing.',
   `<div class="gens">${gens.map(([id, s, t, d]) => `
-      <a class="gencard" href="generators/${id}.html"><div class="gprev"><canvas data-s="${s}" data-live data-box aria-hidden="true"></canvas></div>
-        <div class="gtext"><h3>${t}</h3><p>${d}</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the ${t.split(' ')[0].toLowerCase()} generator →</span></div></a>`).join('')}</div>
+      <a class="gencard" href="generators/${id}.html"><div class="gprev">${s ? `<canvas data-s="${s}" data-live data-box aria-hidden="true"></canvas>` : hingePreview()}</div>
+        <div class="gtext"><h3>${t}</h3><p>${d}</p><div class="chips"><span>SVG</span><span>DXF</span>${s ? '<span>STL</span>' : ''}</div><span class="go">Open the ${s ? t.split(' ')[0].toLowerCase() : 'living hinge'} generator →</span></div></a>`).join('')}</div>
    <h2 class="subh">Ready-made starting points</h2><p class="subp">These open a generator with the settings already chosen.</p>
    <div class="presets">${PRESETS.map(([id, n, d, pre]) => `<a class="preset" href="${gurl(id, pre)}"><span>${GENS[id][0].replace(' generator', '')}</span><b>${n}</b><small>${d}</small></a>`).join('')}</div>
    <p class="soonline">More generators (springs, Geneva drives, and more) are on the way.</p>`, engine('', genSlugs, 'mechanisms') + '<script>MM.landing()</script>');
