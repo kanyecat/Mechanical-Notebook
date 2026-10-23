@@ -12,8 +12,8 @@ Plain HTML, CSS and JavaScript. No dependencies, no build step needed to view.
 node serve.js        # or: yarn dev  →  http://localhost:5173
 ```
 
-`serve.js` runs `build.js` first, which writes `index.html`, `about.html`, `pages/<slug>.html` for every file in
-`js/mechanisms/` and `elements/<slug>.html` for every file in `js/elements/`. The top menu and footer live in `build.js`.
+`serve.js` runs `build.js` first, which writes `index.html`, `about.html`, the room pages (`mechanisms.html`, `elements.html`, `generators.html`, `fabrication.html`), `pages/<slug>.html` for every file in
+`js/mechanisms/`, `elements/<slug>.html` for every file in `js/elements/` and `fabrication/<slug>.html` for every file in `js/fab/`. The top menu and footer live in `build.js`.
 
 ## What's inside
 
@@ -21,6 +21,9 @@ node serve.js        # or: yarn dev  →  http://localhost:5173
 |---|---|
 | `js/mechanisms/` | One file per animated mechanism (drawing, sliders, motion graph) |
 | `js/elements/` | One file per mechanical element (bearings, fasteners, springs...) |
+| `js/fab/` | One file per fabrication technique (tab and slot, snap fit, kerf...), each with a drawing, sliders and a rules-of-thumb table |
+| `js/fab-tricks.js` | The "ways to make it better" cards (strengthening tab and slot, press-fit fixes for each shape, and so on) with their small drawings |
+| `js/fab-catalog.js` | Names, categories, processes, How it works, Application and Fun fact text for every technique |
 | `js/math/` | The calculator, practice problems and challenges for each mechanism |
 | `js/catalog.js` | Names, How it works, Application and Fun fact text for every page |
 | `js/glossary.js` | Plain-language definitions shown when you hover an underlined term |
@@ -68,6 +71,29 @@ Designs live in the page address, so "Copy share link" reproduces a design exact
 that "Open…" loads again.
 
 Known simplifications: gear roots are a plain arc (no trochoid fillet), and internal gears don't take profile shift.
+
+## Search, goals and build guides
+
+- **Search** (press `/` or Ctrl/⌘+K, or use the search icon) finds mechanisms, elements, generators, glossary terms and goals. The index is `js/searchdata.js`, written by `build.js`; edit keywords in `js/search.js` (`EXTRA`) and the goals in `js/goals.js`.
+- **What do you want to do?** on the home page comes from `js/goals.js`. Each goal lists mechanism, element and generator picks; generator picks can carry settings that preset the generator.
+- **Build guide** (button in each generator) is `js/gen/guide.js`: cut list, hardware, assembly steps, fit checks and a print view for the current design.
+
+## Check my design
+
+In each generator, the Export menu has **Check my design before exporting** (on by default, remembered) and a **Check my design now** button. `js/gen/check.js` builds the list: the design rules per generator (`RULES`, matched to the warnings in each generator's `info()`), then checks on the actual shapes (clean outlines, part and hole sizes, material around holes, overlaps, sheet or print-bed size). Each line gets a ✓ or ✗. To add a rule, add a line to `RULES` for that generator.
+
+## Combine mechanisms
+
+`combine.html` chains mechanisms: the output angle of one stage becomes the input angle of the next. `js/combine.js` has a table (`PASS`) of the mechanisms that hand rotation on (gears, belt, chain, worm, planetary, Geneva, Hooke's joint) and how to compute their output shaft angle, and a table of what to plot when a mechanism is the last stage. To make a new mechanism usable as a middle stage, add it to `PASS`. The ready-made examples are in `js/recipes.js`; they also appear on the home page, in search and in the goals. The chain is stored in the URL hash, so links can be shared.
+
+The home page is five room cards (Mechanisms, Elements, Generators, Combine, Fabrication). Each room has its own page with its own filters: Mechanisms, Elements and Fabrication filter by group, and Fabrication also filters by process (laser cutting, CNC, 3D printing). The room list is in `build.js` (`ROOMS`) and the filter bars are built by `MM.landing()` in `js/engine.js`.
+
+## Add a fabrication technique
+
+1. Add an entry to `js/fab-catalog.js` (slug, number, name, category, process list, one-line function, notes, applications, fun fact).
+2. Create `js/fab/<slug>.js` calling `MM.register({ slug, view, params, draw, readout, panels })`. `MM.cycle(a)` gives a 0 to 1 and back animation, and `g.dim(...)` draws dimension lines.
+3. Optionally add a list of "ways to make it better" cards for it in `js/fab-tricks.js` (title, text, the process `p` and material `m` it sits under, tag badges, and a small 3D drawing built with the helpers at the top of that file). They appear under the animation, grouped by process then material, with filter buttons.
+4. Run `node build.js`. The page, room card, filter, search entry and footer link appear on their own.
 
 ## Add a mechanism or element
 

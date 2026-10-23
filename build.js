@@ -5,6 +5,8 @@ const R = (...p) => path.join(__dirname, ...p);
 const list = dir => fs.existsSync(R(dir)) ? fs.readdirSync(R(dir)).filter(f => f.endsWith('.js')).map(f => f.replace('.js', '')) : [];
 const order = (slugs, key) => { const src = fs.readFileSync(R('js/catalog.js'), 'utf8'), at = s => src.indexOf(`slug: '${s}'`); return slugs.slice().sort((a, b) => at(a) - at(b)); };
 const mech = order(list('js/mechanisms')), elems = order(list('js/elements')), mathSlugs = list('js/math');
+const FABCAT = (() => { const w = {}; new Function('window', fs.readFileSync(R('js/fab-catalog.js'), 'utf8'))(w); return w.MM_FAB; })();
+const fabSlugs = list('js/fab').sort((a, b) => FABCAT.findIndex(c => c.slug === a) - FABCAT.findIndex(c => c.slug === b));
 const REPO = 'https://github.com/kanyecat/Mechanical-Notebook';
 const SITE = 'https://mechanicalnotebook.com';
 const DESC = 'Interactive, animated mechanisms and machine parts with the math behind them, plus free gear, linkage and cam generators with SVG, DXF and STL export.';
@@ -22,19 +24,22 @@ const nav = (p, here) => `<a class="skip" href="#app">Skip to content</a>
 <header class="nav"><div class="navin">
   <a class="brand" href="${p}index.html" aria-label="Mechanical Notebook home"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-dasharray="3.2 2.4"/><circle cx="12" cy="12" r="2.2"/></svg><span>Mechanical <b>Notebook</b></span></a>
   <nav class="links" id="navlinks" aria-label="Main">
-    <a href="${p}index.html#mechanisms"${here === 'm' ? ' aria-current="page"' : ''}>Mechanisms</a>
-    <a href="${p}index.html#elements"${here === 'e' ? ' aria-current="page"' : ''}>Elements</a>
+    <a href="${p}mechanisms.html"${here === 'm' ? ' aria-current="page"' : ''}>Mechanisms</a>
+    <a href="${p}elements.html"${here === 'e' ? ' aria-current="page"' : ''}>Elements</a>
     <div class="dd"><button type="button" class="ddb" aria-expanded="false" aria-haspopup="true">Generators ${chev}</button>
       <div class="ddm">
+        <a href="${p}generators.html"><b>All generators</b><span>Overview and ready-made starting points</span></a>
         <a href="${p}generators/gears.html"><b>Gear generator</b><span>Spur, ring and rack gears, gear trains</span></a>
         <a href="${p}generators/linkages.html"><b>Linkage generator</b><span>Four-bar, slider crank, multi-link</span></a>
         <a href="${p}generators/cams.html"><b>Cam generator</b><span>Motion programs, followers, checks</span></a>
         <a href="${p}generators/pulleys.html"><b>Pulley generator</b><span>Belt drives, idlers, lifting tackle</span></a>
         <a href="${p}generators/chains.html"><b>Chain and sprocket generator</b><span>Roller chain, sprockets, multi-stage drives</span></a>
       </div></div>
+    <a href="${p}combine.html"${here === 'c' ? ' aria-current="page"' : ''}>Combine</a>
+    <a href="${p}fabrication.html"${here === 'f' ? ' aria-current="page"' : ''}>Fabrication</a>
     <a href="${p}about.html"${here === 'a' ? ' aria-current="page"' : ''}>About</a>
   </nav>
-  <span class="navr"><span data-theme-picker></span>
+  <span class="navr"><button type="button" class="srchb" data-search aria-label="Search the notebook" title="Search (Ctrl/⌘ + K, or /)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span class="lbl">Search</span><kbd>/</kbd></button><span data-theme-picker></span>
   <button type="button" class="menub" aria-expanded="false" aria-controls="navlinks" aria-label="Open menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="m1" d="M4 7h16"/><path class="m2" d="M4 12h16"/><path class="m3" d="M4 17h16"/></svg></button></span>
 </div></header>`;
 
@@ -43,15 +48,15 @@ const foot = p => `<footer class="foot"><div class="footin">
     <p>A free, open notebook of moving parts. Watch them move, change them, and work out the numbers.</p>
     <p class="fsmall">Made by Joo Hee Kim · <a href="${p}about.html">About this site</a></p></div>
   <div class="fcol"><h4>Explore</h4>
-    <a href="${p}index.html#mechanisms">Mechanisms</a><a href="${p}index.html#elements">Mechanical elements</a>
+    <a href="${p}mechanisms.html">Mechanisms</a><a href="${p}elements.html">Mechanical elements</a><a href="${p}fabrication.html">Fabrication techniques</a><a href="${p}combine.html">Combine mechanisms</a>
     <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a><a href="${p}generators/chains.html">Chain generator</a></div>
   <div class="fcol"><h4>Project</h4>
     <a href="${REPO}" rel="noopener">Source code on GitHub</a><span>Free and open source (MIT licence)</span>
     <span>Inspired by <i>507 Mechanical Movements</i> by Henry T. Brown (1868)</span><span>Visits are counted with Google Analytics</span></div>
 </div><div class="fbase"><span>© ${new Date().getFullYear()} Joo Hee Kim</span><span>More mechanisms, elements and generators are on the way.</span></div></footer>`;
 
-const tail = (p, scripts) => `<script src="${p}js/glossary.js"></script><script src="${p}js/site.js"></script>${scripts || ''}</body></html>`;
-const engine = (p, slugs, dir) => `<script src="${p}js/catalog.js"></script><script src="${p}js/engine.js"></script>`
+const tail = (p, scripts) => `<script src="${p}js/glossary.js"></script><script src="${p}js/site.js"></script><script src="${p}js/searchdata.js"></script><script src="${p}js/search.js"></script>${scripts || ''}</body></html>`;
+const engine = (p, slugs, dir) => `<script src="${p}js/catalog.js"></script><script src="${p}js/fab-catalog.js"></script><script src="${p}js/engine.js"></script>`
   + slugs.map(x => `<script src="${p}js/${dir}/${x}.js"></script>`).join('');
 
 /* ----- mechanism and element pages ----- */
@@ -59,10 +64,61 @@ function detail(slug, dir, folder, here) {
   const extra = (fs.existsSync(R('js/learn.js')) ? '<script src="../js/learn.js"></script>' : '') + (mathSlugs.includes(slug) ? `<script src="../js/math/${slug}.js"></script>` : '');
   fs.mkdirSync(R(folder), { recursive: true });
   fs.writeFileSync(R(folder, slug + '.html'), head('Mechanical Notebook', '../', null, `${folder}/${slug}.html`) + nav('../', here) + '<main class="sheet" id="app"></main>' + foot('../')
-    + tail('../', engine('../', dir === 'mechanisms' ? mech : elems, dir) + extra + `<script>MM.mount('${slug}')</script>`));
+    + tail('../', engine('../', dir === 'mechanisms' ? mech : dir === 'fab' ? fabSlugs : elems, dir) + extra + (dir === 'fab' ? '<script src="../js/fab-tricks.js"></script>' : '') + `<script>MM.mount('${slug}')</script>`));
 }
 mech.forEach(s => detail(s, 'mechanisms', 'pages', 'm'));
 elems.forEach(s => detail(s, 'elements', 'elements', 'e'));
+fabSlugs.forEach(s => detail(s, 'fab', 'fabrication', 'f'));
+
+/* ----- search index and goals ----- */
+const GOALS = require('./js/goals.js'), RECIPES = require('./js/recipes.js');
+const rurl = id => 'combine.html#' + encodeURIComponent(JSON.stringify(RECIPES.find(r => r.id === id).stages));
+const CAT = (() => { const w = {}; new Function('window', fs.readFileSync(R('js/catalog.js'), 'utf8'))(w); return w; })();
+const byslug = {}; (CAT.MM_CATALOG || []).forEach(c => byslug[c.slug] = Object.assign({ dir: 'pages' }, c)); (CAT.MM_ELEMENTS || []).forEach(c => byslug[c.slug] = Object.assign({ dir: 'elements' }, c)); FABCAT.forEach(c => byslug[c.slug] = Object.assign({ dir: 'fabrication' }, c));
+const GENS = {
+  gears: ['Gear generator', 'Spur, helical, herringbone, bevel and worm gears, ring gears, racks and gear trains, with SVG, DXF and STL export.', 'involute module teeth pitch pressure angle backlash train planetary idler compound holes skeleton spokes laser cut bore keyway nest'],
+  linkages: ['Linkage generator', 'Four-bar, slider-crank and multi-link mechanisms with coupler curves, link designs and export.', 'four-bar slider crank multi link jansen coupler curve path trace grashof transmission angle rocker walking leg'],
+  cams: ['Cam generator', 'Program rise, dwell and fall motions, pick a follower, and check pressure angle and undercut.', 'cam follower motion program cycloidal harmonic dwell rise fall lift pressure angle undercut roller flat knife'],
+  pulleys: ['Pulley generator', 'Belt drives with idlers and shared shafts, and block-and-tackle lifting systems.', 'belt pulley idler wrap angle slip tension block and tackle lifting load sheave rope timing v-belt'],
+  chains: ['Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes with attachments, multiple chains and sprocket designs.', 'roller chain sprocket ansi iso pitch attachment plate tab multi strand idler tensioner skeleton']
+};
+const PRESETS = [   // deep links into a generator: [generator, title, description, settings, extra words]
+  ['gears', 'Bevel gears', 'A pair of cone gears for shafts that meet at an angle, cut as stacked layers or one tapered part.', { mode: 'bevel' }, 'bevel miter right angle tredgold'],
+  ['gears', 'Worm drive', 'A worm and wheel with 1 to 4 starts, left or right hand, as keyed layers or a twisted STL.', { mode: 'worm' }, 'worm wheel lead self locking reduction'],
+  ['gears', 'Helical gears', 'Slanted teeth for smooth, quiet running, with the helix angle shown in the STL.', { ftype: 'helical' }, 'helical helix angle'],
+  ['gears', 'Herringbone gears', 'Two opposite slants in a V so the sideways pushes cancel.', { ftype: 'herring' }, 'herringbone double helical'],
+  ['gears', 'Rack and pinion', 'A pinion driving a straight toothed rack.', { type: 'rack' }, 'rack pinion linear'],
+  ['gears', 'Ring (internal) gear', 'A pinion running inside a ring gear.', { type: 'int', z1: 14, z2: 40 }, 'ring internal annulus'],
+  ['gears', 'Skeleton gears', 'Gears with spokes or holes cut in the body to save material and weight.', { gdesign: 'spokes' }, 'skeleton spokes holes lightweight pockets teardrop swirl'],
+  ['linkages', 'Slider-crank', 'A crank, rod and slider, with the stroke and time ratio.', { kind: 'slider' }, 'slider crank piston engine stroke'],
+  ['linkages', 'Multi-link builder', 'Build your own linkage from pivots and links and trace any point.', { kind: 'multi' }, 'multi link jansen walking leg sixbar'],
+  ['pulleys', 'Block and tackle', 'Lifting systems with mechanical advantage, effort and rope pulled.', { mode: 'lift' }, 'block tackle lifting hoist winch mechanical advantage']
+];
+const gurl = (id, preset) => `generators/${id}.html` + (preset ? '#' + encodeURIComponent(JSON.stringify(preset)) : '');
+const pickUrl = ([k, slug, , preset]) => k === 'g' ? gurl(slug, preset) : k === 'c' ? rurl(slug) : (byslug[slug].dir + '/' + slug + '.html');
+const EXTRA = {   // words people type that the page text does not use
+  'tab-and-slot': 'tab slot t-slot flat pack laser cut box joint fit kerf', 'finger-joint': 'box joint finger joint comb joint corner drawer', 'captive-nut': 'nut trap nut slot hex pocket t-nut bolt hold nut m3 m4 m5',
+  'heat-set-insert': 'heat set insert threaded insert melt in brass insert soldering iron m3 m4 m5 thread plastic', 'press-fit': 'press fit interference fit friction fit dowel pin bearing seat shaft hole tolerance', 'snap-fit': 'snap fit cantilever hook clip latch catch click',
+  'living-hinge': 'living hinge flexure flex hinge bending kerf bend lattice', 'laser-kerf': 'kerf laser cutter tolerance offset compensation fit clearance beam width', 'print-tolerances': 'fdm 3d print tolerance overhang bridging support hole shrink wall thickness layer nozzle',
+  'cnc-corners': 'dog bone dogbone t-bone inside corner fillet router end mill cutter radius pocket', 'poka-yoke': 'poka yoke mistake proofing asymmetric keyed orientation assembly dfa design for assembly',
+  'shaft-key': 'keyway key way woodruff feather spline set screw hub', 'bolt-nut': 'bolt nut screw fastener thread metric imperial torque preload washer m3 m4 m5 m6 m8', 'ball-bearing': 'bearing ball bearing race 608 skateboard radial thrust bushing',
+  spring: 'spring compression extension rate stiffness coil wire', 'retaining-ring': 'circlip e-clip snap ring seeger groove', 'lead-screw': 'lead screw leadscrew acme trapezoidal jack ball screw', 'screw-types': 'screw phillips torx hex allen drive wood machine self tapping',
+  'timing-belt': 'timing belt gt2 htd stepper cog tooth belt', 'geneva-drive': 'geneva maltese cross indexing', 'slider-crank': 'piston engine crank slider', 'four-bar': 'four bar fourbar rocker crank coupler grashof', 'jansen-linkage': 'strandbeest theo jansen walking leg',
+  'planetary-gears': 'epicyclic sun planet ring carrier gearbox', 'worm-gear': 'worm wheel self locking', 'spur-gears': 'gear teeth involute meshing', 'cam-follower': 'cam follower lobe', 'roller-chain': 'chain sprocket bicycle', 'belt-pulleys': 'belt pulley block tackle v-belt',
+  'double-hookes-joint': 'universal joint u-joint cardan driveshaft', 'tusi-couple': 'tusi couple hypocycloid cardano', 'peaucellier': 'peaucellier lipkin inversor straight line', 'trammel': 'trammel archimedes ellipse', 'quick-return': 'quick return whitworth shaper', 'ratchet-pawl': 'ratchet pawl click one way', 'scotch-yoke': 'scotch yoke slotted'
+};
+const why = {}; GOALS.forEach(g => g.picks.forEach((pk, i) => { if (pk[0] !== 'g' || !pk[3]) { const key = pk[0] + pk[1]; (why[key] = why[key] || []).push(Object.assign({ i }, g)); } }));
+const ord = list => list.length ? Math.min(...list.map(g => g.i)) : null;
+const docs = [];
+Object.entries(GENS).forEach(([id, [n, d, k]]) => { const gs = (why['g' + id] || []); docs.push({ t: 'g', u: gurl(id), n, c: 'Generator', d, k: k, w: gs.map(g => g.title + ' ' + g.words).join(' '), o: ord(gs), x: '', why: gs.slice(0, 2).map(g => g.title).join(' · ') }); });
+PRESETS.forEach(([id, n, d, pre, k]) => docs.push({ t: 'g', u: gurl(id, pre), n: GENS[id][0].replace(' generator', '') + ': ' + n, c: 'Generator', d, k: k + ' ' + GENS[id][2], x: '' }));
+Object.values(byslug).forEach(c => {
+  const t = c.dir === 'pages' ? 'm' : c.dir === 'fabrication' ? 'f' : 'e', gs = why[t + c.slug] || [];
+  docs.push({ t, u: c.dir + '/' + c.slug + '.html', n: c.name, c: c.category, d: c.fn, k: (EXTRA[c.slug] || '') + (c.process ? ' ' + c.process.join(' ') + ' fabrication technique design for assembly manufacturing dfm dfa' : ''), w: gs.map(g => g.title + ' ' + g.words).join(' '), o: ord(gs), x: [].concat(c.notes || [], c.app || [], c.fun || []).join(' '), why: gs.slice(0, 2).map(g => g.title).join(' · ') });
+});
+docs.push({ t: 'c', u: 'combine.html', n: 'Combine mechanisms', c: 'Tool', d: 'Chain mechanisms so the output of one drives the next, and see the motion that comes out of the end.', k: 'combine chain stages compound gearbox gear train reduction connect link together drive output of one into another', x: '' });
+RECIPES.forEach(r => docs.push({ t: 'c', u: rurl(r.id), n: r.title, c: 'Combine', d: r.blurb, k: r.words + ' combine chain', x: '' }));
+fs.writeFileSync(R('js/searchdata.js'), '/* Written by build.js: the search index. Do not edit by hand. */\nwindow.MN_SEARCH = ' + JSON.stringify({ docs, goals: GOALS.map(g => g.title) }) + ';\n');
 
 /* ----- home page ----- */
 const gens = [
@@ -72,43 +128,70 @@ const gens = [
   ['pulleys', 'belt-pulleys', 'Pulley generator', 'Place pulleys anywhere, join them with belts and hang loads on them, or rig a block and tackle. See speeds, grip and whether it can lift.'],
   ['chains', 'roller-chain', 'Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes. Place sprockets anywhere, run several chains, pick skeleton or swirl sprockets and cut every part.']
 ];
+const live = s => `<canvas data-s="${s}" data-live data-box aria-hidden="true"></canvas>`;
+const ROOMS = [
+  { id: 'mechanisms', href: 'mechanisms.html', title: 'Mechanisms', count: mech.length + ' pages', blurb: 'Animated drawings of how motion is changed: gears, linkages, cams, intermittent drives. Change them, see the graph, work the math.', cta: 'Enter mechanisms', prev: live('four-bar') },
+  { id: 'elements', href: 'elements.html', title: 'Elements', count: elems.length + ' pages', blurb: 'Bearings, fasteners, springs and the other parts that hold machines together: how they work and how to size them.', cta: 'Enter elements', prev: live('ball-bearing') },
+  { id: 'generators', href: 'generators.html', title: 'Generators', count: gens.length + ' tools', blurb: 'Design real parts, check them for problems and export SVG, DXF and STL for laser cutting, CNC or 3D printing.', cta: 'Enter generators', prev: live('cam-follower') },
+  { id: 'combine', href: 'combine.html', title: 'Combine', count: RECIPES.length + ' examples', blurb: 'Chain mechanisms so the output of one drives the next: a gearbox into a piston, a chain into an indexer.', cta: 'Open the combine tool', prev: '<div class="rpair">' + live('spur-gears') + '<i>→</i>' + live('slider-crank') + '</div>' },
+  { id: 'fabrication', href: 'fabrication.html', title: 'Fabrication', count: fabSlugs.length + ' techniques', blurb: 'How to design parts that go together and come out right: tab and slot, heat-set inserts, snap fits, kerf, tolerances and more.', cta: 'Enter fabrication', prev: live('tab-and-slot') }
+];
 fs.writeFileSync(R('index.html'), head('Mechanical Notebook: how machines move, and the math behind them', '', null, '') + nav('', 'h') + `
 <main class="sheet home" id="app">
-  <section class="hero">
+  <section class="hero solo">
     <div class="heromain">
       <div class="kicker">How machines move, and the math behind them</div>
       <h1 class="title">Mechanical Notebook</h1>
       <p class="lede" data-gloss>Watch mechanisms and machine parts move, change their sizes, and work out the real numbers: speeds, ratios, forces and strokes. Then design your own with the generators and export files to make them.</p>
-      <div class="cta"><a class="btn" href="#mechanisms">Browse mechanisms</a><a class="btn ghost" href="#generators">Design with a generator</a></div>
+      <button type="button" class="herosearch" data-search aria-label="Search the notebook"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search mechanisms, generators, parts…</span><kbd>/</kbd></button>
+      <div class="cta"><a class="btn" href="#goals">What do you want to do?</a><a class="btn ghost" href="#rooms">Browse the rooms</a></div>
     </div>
-    <nav class="toc" aria-label="Contents"><div class="toch">Contents</div><ol>
-      <li><a href="#generators"><span class="tn">01</span><span class="tt">Generators<small>Design and export parts</small></span><span class="tc">${gens.length}</span></a></li>
-      <li><a href="#mechanisms"><span class="tn">02</span><span class="tt">Mechanisms<small>How motion is changed</small></span><span class="tc">${mech.length}</span></a></li>
-      <li><a href="#elements"><span class="tn">03</span><span class="tt">Mechanical elements<small>The parts that hold machines together</small></span><span class="tc">${elems.length}</span></a></li>
-      <li><a href="about.html"><span class="tn">04</span><span class="tt">About<small>Who made this and why</small></span><span class="tc">→</span></a></li>
-    </ol></nav>
   </section>
 
-  <section id="generators" class="sec">
-    <header class="sech"><span class="secn">01</span><div><h2>Generators</h2><p>Design your own parts, check them for problems, and export files for laser cutting, CNC or 3D printing.</p></div></header>
-    <div class="gens">${gens.map(([id, s, t, d]) => `
+  <section id="rooms" class="sec firstsec">
+    <header class="sech"><span class="secn">01</span><div><h2>Explore the notebook</h2><p>Five rooms, each with its own page and filters. Pick one, or search from the bar above.</p></div></header>
+    <div class="rooms">${ROOMS.map(r => `
+      <a class="room r-${r.id}" href="${r.href}"><div class="rprev">${r.prev}</div>
+        <div class="rtext"><div class="rtop"><h3>${r.title}</h3><span class="rcount">${r.count}</span></div><p>${r.blurb}</p><span class="go">${r.cta} →</span></div></a>`).join('')}
+    </div>
+  </section>
+
+  <section id="goals" class="sec">
+    <header class="sech"><span class="secn">02</span><div><h2>What do you want to do?</h2><p>Start from the motion you need. Each card suggests mechanisms to learn from and generators that open ready to design.</p></div></header>
+    <div class="goals">${GOALS.map(g => `
+      <article class="goal" id="goal-${g.id}"><h3><span class="gi" aria-hidden="true">${g.icon}</span>${g.title}</h3><p>${g.blurb}</p>
+        <ul>${g.picks.map(pk => `<li><a href="${pickUrl(pk)}"><span class="pk pk-${pk[0]}">${{ m: 'Mechanism', e: 'Element', g: 'Generator', c: 'Combine', f: 'Technique' }[pk[0]]}</span><span class="pn"><b>${pk[0] === 'g' ? (GENS[pk[1]][0]) : pk[0] === 'c' ? RECIPES.find(r => r.id === pk[1]).title : byslug[pk[1]].name}</b><small>${pk[2]}</small></span></a></li>`).join('')}</ul></article>`).join('')}
+    </div>
+  </section>
+
+</main>` + foot('') + tail('', engine('', mech, 'mechanisms') + elems.map(x => `<script src="js/elements/${x}.js"></script>`).join('') + fabSlugs.map(x => `<script src="js/fab/${x}.js"></script>`).join('') + '<script>MM.landing()</script>'));
+
+/* ----- room pages: one page for each room, with its own filters ----- */
+const roomPage = (file, here, kicker, title, lede, body, scripts) => fs.writeFileSync(R(file), head(title + ' · Mechanical Notebook', '', lede, file) + nav('', here) + `
+<main class="sheet roompage" id="app">
+  <header class="phead"><div class="kicker">${kicker}</div><h1 class="title">${title}</h1><p class="lede" data-gloss>${lede}</p></header>
+  ${body}
+</main>` + foot('') + tail('', scripts));
+roomPage('mechanisms.html', 'm', 'Room 1', 'Mechanisms', 'Each page has a moving drawing you can change, a step-by-step explanation, a motion graph, and a calculator with practice problems.',
+  `<div class="filters" id="filters" role="group" aria-label="Filter mechanisms by category"></div><div class="grid" id="grid" data-room="mechanisms"></div>`, engine('', mech, 'mechanisms') + '<script>MM.landing()</script>');
+roomPage('elements.html', 'e', 'Room 2', 'Mechanical elements', 'Bearings, fasteners, springs and the other everyday parts that hold machines together: how they work, how to choose them, and how to size them.',
+  `<div class="filters" id="filters" role="group" aria-label="Filter elements by category"></div><div class="grid" id="grid" data-room="elements"></div>`, engine('', elems, 'elements') + '<script>MM.landing()</script>');
+roomPage('fabrication.html', 'f', 'Room 5', 'Fabrication', 'How to design parts that go together and come out right. Each technique has an animation, the rules of thumb and a calculator. Start with joining, then designing for the process.',
+  `<div class="filterrow"><div class="fl"><span class="fll">Group</span><div class="filters" id="filters" role="group" aria-label="Filter techniques by group"></div></div>
+   <div class="fl"><span class="fll">Made by</span><div class="filters" id="pfilters" role="group" aria-label="Filter techniques by how the part is made"></div></div></div>
+   <div class="grid" id="grid" data-room="fabrication"></div>`, engine('', fabSlugs, 'fab') + '<script>MM.landing()</script>');
+const genSlugs = [...new Set(gens.map(g => g[1]))];
+roomPage('generators.html', 'g', 'Room 3', 'Generators', 'Design your own parts, check them for problems, and export files for laser cutting, CNC or 3D printing.',
+  `<div class="gens">${gens.map(([id, s, t, d]) => `
       <a class="gencard" href="generators/${id}.html"><div class="gprev"><canvas data-s="${s}" data-live data-box aria-hidden="true"></canvas></div>
-        <div class="gtext"><h3>${t}</h3><p>${d}</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the ${t.split(' ')[0].toLowerCase()} generator →</span></div></a>`).join('')}
-    </div>
-    <p class="soonline">More generators (springs, Geneva drives, and more) are on the way.</p>
-  </section>
+        <div class="gtext"><h3>${t}</h3><p>${d}</p><div class="chips"><span>SVG</span><span>DXF</span><span>STL</span></div><span class="go">Open the ${t.split(' ')[0].toLowerCase()} generator →</span></div></a>`).join('')}</div>
+   <h2 class="subh">Ready-made starting points</h2><p class="subp">These open a generator with the settings already chosen.</p>
+   <div class="presets">${PRESETS.map(([id, n, d, pre]) => `<a class="preset" href="${gurl(id, pre)}"><span>${GENS[id][0].replace(' generator', '')}</span><b>${n}</b><small>${d}</small></a>`).join('')}</div>
+   <p class="soonline">More generators (springs, Geneva drives, and more) are on the way.</p>`, engine('', genSlugs, 'mechanisms') + '<script>MM.landing()</script>');
 
-  <section id="mechanisms" class="sec">
-    <header class="sech"><span class="secn">02</span><div><h2>Mechanisms</h2><p>Each page has a moving drawing you can change, a step-by-step explanation, a motion graph, and a calculator with practice problems.</p></div></header>
-    <div class="filters" id="filters" role="group" aria-label="Filter mechanisms by category"></div>
-    <div class="grid" id="grid"></div>
-  </section>
-
-  <section id="elements" class="sec">
-    <header class="sech"><span class="secn">03</span><div><h2>Mechanical elements</h2><p>Bearings, fasteners, springs and the other everyday parts that hold machines together: how they work, how to choose them, and how to size them.</p></div></header>
-    <div class="grid" id="egrid"></div>
-  </section>
-</main>` + foot('') + tail('', engine('', mech, 'mechanisms') + elems.map(x => `<script src="js/elements/${x}.js"></script>`).join('') + '<script>MM.landing()</script>'));
+/* ----- combine page ----- */
+fs.writeFileSync(R('combine.html'), head('Combine mechanisms · Mechanical Notebook', '', 'Chain mechanisms together so the output of one drives the next, and watch the motion that comes out.', 'combine.html') + nav('', 'c') + '<main class="sheet" id="app"></main>' + foot('')
+  + tail('', engine('', mech, 'mechanisms') + '<script src="js/recipes.js"></script><script src="js/combine.js"></script><script>MN_COMBINE.mount(document.getElementById("app"), RECIPES)</script>'));
 
 /* ----- about page ----- */
 fs.writeFileSync(R('about.html'), head('About · Mechanical Notebook', '', 'Who made Mechanical Notebook, why, and who it is for.', 'about.html') + nav('', 'a') + `

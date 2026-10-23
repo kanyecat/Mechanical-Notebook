@@ -19,6 +19,12 @@
   };
   if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('mn-theme', () => MM.applyTheme());
   MM.register = function (m) { MM.registry[m.slug] = m; };
+  /* a 0..1..0 cycle for assembly animations: holds at both ends, eased in between. a is the animation angle (a full turn is one cycle) */
+  MM.cycle = function (a, hold) {
+    const h = hold == null ? 0.14 : hold, t = ((a / TAU) % 1 + 1) % 1; let u;
+    if (t < h) u = 0; else if (t < 0.5) u = (t - h) / (0.5 - h); else if (t < 0.5 + h) u = 1; else u = 1 - (t - 0.5 - h) / (0.5 - h);
+    return u * u * (3 - 2 * u);
+  };
   MM.cat = () => window.MM_CATALOG.filter(c => MM.registry[c.slug]);
 
   /* ---------- drawing helper bound to a canvas context ---------- */
@@ -66,6 +72,11 @@
     if (o.fill) c.fill(); c.stroke(); c.setLineDash([]);
     if (o.hatch) this.hatchPath(() => { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); }, o.hatch);
   };
+  /* a filled, hatched rectangle (the usual picture of a cut part). o: fill, hatch:false, sp (hatch spacing), color, w, dash */
+  G.rect = function (x, y, w, h, o) {
+    o = o || {};
+    this.poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], { fill: o.fill === undefined ? COL.white : o.fill, color: o.color, w: o.w, dash: o.dash, hatch: o.hatch === false ? null : { spacing: o.sp || 6, cx: x + w / 2, cy: y + h / 2 } });
+  };
   /* hatch the interior of a path made by pathFn (which must call beginPath and build path) */
   G.hatchPath = function (pathFn, o) {
     o = o === true ? {} : o; const c = this.c, sp = o.spacing || 6, ang = o.angle == null ? Math.PI / 4 : o.angle;
@@ -95,6 +106,15 @@
     o = o || {}; this.line(x1, y1, x2, y2, o); const a = Math.atan2(y2 - y1, x2 - x1), s = 8, c = this.c;
     this.style({ w: o.w || 1.6, color: o.color, fill: o.color || COL.ink });
     c.beginPath(); c.moveTo(x2, y2); c.lineTo(x2 - s * Math.cos(a - 0.4), y2 - s * Math.sin(a - 0.4)); c.lineTo(x2 - s * Math.cos(a + 0.4), y2 - s * Math.sin(a + 0.4)); c.closePath(); c.fill();
+  };
+  /* dimension line between two points with an arrowhead at each end, a label, and a sideways offset (off, in pixels) */
+  G.dim = function (x1, y1, x2, y2, label, off, o) {
+    o = o || {}; const d = Math.hypot(x2 - x1, y2 - y1) || 1, nx = -(y2 - y1) / d * (off || 0), ny = (x2 - x1) / d * (off || 0), c = o.color || COL.blue;
+    const ax = x1 + nx, ay = y1 + ny, bx = x2 + nx, by = y2 + ny;
+    if (off) { this.line(x1, y1, ax + (ax - x1) * 0.15, ay + (ay - y1) * 0.15, { w: 0.8, color: c }); this.line(x2, y2, bx + (bx - x2) * 0.15, by + (by - y2) * 0.15, { w: 0.8, color: c }); }
+    const ux = (x2 - x1) / d, uy = (y2 - y1) / d, ar = (px, py, k) => { const q = this.c; this.style({ w: 1, color: c, fill: c }); q.beginPath(); q.moveTo(px, py); q.lineTo(px - k * 7 * ux + 2.6 * uy, py - k * 7 * uy - 2.6 * ux); q.lineTo(px - k * 7 * ux - 2.6 * uy, py - k * 7 * uy + 2.6 * ux); q.closePath(); q.fill(); };
+    this.line(ax, ay, bx, by, { w: 1, color: c }); ar(ax, ay, -1); ar(bx, by, 1);
+    if (label) { const tx = (ax + bx) / 2 + (o.tx || 0), ty = (ay + by) / 2 + (o.ty == null ? -9 : o.ty); this.text(label, tx, ty, { size: o.size || 11, align: 'center', color: c, weight: 600 }); }
   };
   G.curvedArrow = function (x, y, r, a0, a1, o) { this.arc(x, y, r, a0, a1, o); const ex = x + r * Math.cos(a1), ey = y + r * Math.sin(a1), t = a1 + (a1 > a0 ? Math.PI / 2 : -Math.PI / 2); this.arrow(ex - Math.cos(t) * 2, ey - Math.sin(t) * 2, ex + Math.cos(t) * 2, ey + Math.sin(t) * 2, o); };
   G.trace = function (pts, o) {
@@ -182,10 +202,20 @@
   // mechanisms that have a generator page, with starting settings
   const MAKE = { 'spur-gears': ['gears'], 'rack-pinion': ['gears', { type: 'rack' }], 'four-bar': ['linkages'], 'slider-crank': ['linkages', { kind: 'slider' }], 'cam-follower': ['cams'], 'belt-pulleys': ['pulleys'], 'timing-belt': ['pulleys', { btype: 'timing' }], 'roller-chain': ['chains'] };
   MM.elementsCat = () => (window.MM_ELEMENTS || []).filter(c => MM.registry[c.slug]);
+  MM.tricksHTML = tr => {
+    const order = ['Laser cutting', 'CNC routing', '3D printing', 'Any process'], groups = {};
+    tr.items.forEach(it => { const p = it.p || 'Any process', m = it.m || 'Any material'; ((groups[p] = groups[p] || {})[m] = groups[p][m] || []).push(it); });
+    const card = it => `<figure class="trk"><svg viewBox="0 0 220 162" role="img" aria-label="${it.t}">${it.svg}</svg><figcaption><b>${it.t}</b><span>${it.x}</span>${it.tags ? `<span class="bdgs">${it.tags.map(x => `<i class="bdg">${x}</i>`).join('')}</span>` : ''}</figcaption></figure>`;
+    const present = order.filter(p => groups[p]);
+    const chips = present.filter(p => p !== 'Any process').length > 1 ? `<div class="filters trf" role="group" aria-label="Show ways for one process"><button type="button" class="on" data-p="">All</button>${present.filter(p => p !== 'Any process').map(p => `<button type="button" data-p="${p}">${p}</button>`).join('')}</div>` : '';
+    return `<section class="box tricks" id="tricks"><h3>${tr.title}</h3>${tr.intro ? `<p class="xpintro">${tr.intro}</p>` : ''}<div class="trleg" aria-label="Colour key"><span><i class="lg-p"></i>stays in place</span><span><i class="lg-a"></i>gets inserted</span><span><i class="lg-k"></i>hole / opening</span><span><i class="lg-h"></i>guide or motion line</span></div>${chips}${present.map(p => `<div class="trgrp" data-p="${p}"><h4>${p === 'Any process' ? 'Any process' : p}</h4>${Object.keys(groups[p]).map(m => `<h5>${m}</h5><div class="trks">${groups[p][m].map(card).join('')}</div>`).join('')}</div>`).join('')}</section>`;
+  };
+  MM.tricksInit = root => { const box = root.querySelector('#tricks'); if (!box) return; box.querySelectorAll('.trf button').forEach(b => b.onclick = () => { box.querySelectorAll('.trf button').forEach(x => x.classList.toggle('on', x === b)); box.querySelectorAll('.trgrp').forEach(g => { g.hidden = !!b.dataset.p && g.dataset.p !== b.dataset.p && g.dataset.p !== 'Any process'; }); }); };
+  MM.fabCat = () => (window.MM_FAB || []).filter(c => MM.registry[c.slug]);
   MM.mount = function (slug) {
-    const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug);
-    const cat = isEl ? MM.elementsCat() : MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
-    const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length], pre = isEl ? 'E' : 'M';
+    const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug), isFab = (window.MM_FAB || []).some(c => c.slug === slug);
+    const cat = isFab ? MM.fabCat() : isEl ? MM.elementsCat() : MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
+    const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length], pre = isFab ? 'F' : isEl ? 'E' : 'M';
     document.title = meta.name + ' · Mechanical Notebook';
     const params = m.params || []; const P = {}; params.forEach(q => P[q.key] = q.value);
     const fmt = (q, v) => (q.step < 1 ? (+v).toFixed(q.step < 0.1 ? 2 : 1) : String(v)) + (q.unit || '');
@@ -195,12 +225,13 @@
     const root = document.getElementById('app');
     const apps = Array.isArray(meta.app) ? meta.app : [meta.app || meta.used];
     root.innerHTML = `
-    <nav class="crumbs" aria-label="Breadcrumb"><a href="../index.html#${isEl ? 'elements' : 'mechanisms'}">${isEl ? 'Elements' : 'Mechanisms'}</a><span>/</span><span>${meta.category}</span>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../${isFab ? 'fabrication' : isEl ? 'elements' : 'mechanisms'}.html">${isFab ? 'Fabrication' : isEl ? 'Elements' : 'Mechanisms'}</a><span>/</span><span>${meta.category}</span>
       <span class="crnav"><a href="${prev.slug}.html" title="${prev.name}">← Prev</a><a href="${next.slug}.html" title="${next.name}">Next →</a></span></nav>
     <header class="phead">
-      <div class="kicker">${isEl ? 'Element' : 'No.'} ${meta.num}</div>
+      <div class="kicker">${isFab ? 'Technique' : isEl ? 'Element' : 'No.'} ${meta.num}</div>
       <h1 class="title">${meta.name}</h1>
       <p class="lede">${meta.fn}</p>
+      ${isFab && meta.process ? `<div class="procs">${meta.process.map(x => `<span>${x}</span>`).join('')}</div>` : ''}
     </header>
     <div class="stage">
       <section class="box drawing">
@@ -216,11 +247,12 @@
       <aside class="side">
         <div class="box now"><h3>Right now</h3><div id="ro">&nbsp;</div></div>
         <div class="box notes"><h3>How it works</h3><ol>${meta.notes.map(n => `<li>${n.replace(/^(Good to know|Try it):/, '<b>$1:</b>')}</li>`).join('')}</ol></div>
-        <div class="box used"><h3>Application</h3><ul>${apps.map(x => `<li>${x}</li>`).join('')}</ul></div>
+        <div class="box used"><h3>${isFab ? 'Where it is used' : 'Application'}</h3><ul>${apps.map(x => `<li>${x}</li>`).join('')}</ul></div>
         ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam', pulleys: 'pulley', chains: 'chain and sprocket' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
       </aside>
     </div>
     ${(m.panels || []).map((pn, i) => `<section class="box xpanel" id="${pn.id || 'xp' + i}"><h3>${pn.title}</h3>${pn.intro ? `<p class="xpintro">${pn.intro}</p>` : ''}<div class="xpbody"></div></section>`).join('')}
+    ${isFab && window.MM_TRICKS && MM_TRICKS[slug] ? MM.tricksHTML(MM_TRICKS[slug]) : ''}
     ${m.graph ? `<section class="box graphbox"><h3>Motion graph</h3><canvas id="graph"></canvas><p class="hint">The marker follows the drawing. Drag the position slider to step through one cycle.</p></section>` : ''}
     ${MM.math && MM.math[slug] ? '<section class="box mathbox"><h3>Do the math</h3><div id="learn"></div></section>' : ''}
     ${meta.fun ? `<section class="box fun"><h3>Fun fact</h3><p>${meta.fun}</p></section>` : ''}
@@ -238,6 +270,7 @@
       if (first && pn.init) pn.init(body, P, { setParam: (k, v) => setParam(k, v) });
     });
     drawPanels(true);
+    if (MM.tricksInit) MM.tricksInit(root);
     const cv = document.getElementById('main'), gc = document.getElementById('graph');
     let a = 0, playing = true, dir = 1, speed = 1, last = performance.now();
     const play = document.getElementById('play'), sp = document.getElementById('speed'), sc = document.getElementById('scrub'), ro = document.getElementById('ro');
@@ -268,7 +301,7 @@
       // Right after a tap on a link the page text is left alone: phone browsers (iPhone Safari especially) treat a page that
       // changes under the finger as a "hover" and drop the tap, so links would only highlight and not open. Canvases keep moving.
       if (performance.now() < (window.MNQuiet || 0)) return;
-      const r = m.graph && m.graph.readout ? m.graph.readout(a, P) : null;
+      const r = m.graph && m.graph.readout ? m.graph.readout(a, P) : m.readout ? m.readout(a, P) : null;
       if (r) { const h = `<b>${r.big}</b><span>${r.small}</span>`; if (h !== ro._h) { ro._h = h; ro.innerHTML = h; } }
       const deg = ((a % period) + period) % period / period * 360, dt = Math.round(deg) + '°';
       sc.value = deg; if (dt !== angv.textContent) angv.textContent = dt;
@@ -285,19 +318,28 @@
 
   /* ---------- landing page ---------- */
   MM.landing = function () {
-    const cat = MM.cat(), els = MM.elementsCat(), grid = document.getElementById('grid'), egrid = document.getElementById('egrid'), fl = document.getElementById('filters');
-    const cats = ['All'].concat([...new Set(cat.map(c => c.category))]); let cur = 'All';
-    fl.innerHTML = cats.map(c => `<button type="button" data-c="${c}" class="${c === 'All' ? 'on' : ''}" aria-pressed="${c === 'All'}">${c}</button>`).join('');
-    const card = (c, dir) => `<a class="card" data-c="${c.category}" href="${dir}/${c.slug}.html"><canvas data-s="${c.slug}" data-box aria-hidden="true"></canvas><div class="meta"><div class="num">${dir === 'elements' ? 'E' : 'M'}-${c.num} · ${c.category}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div></div></a>`;
+    const ROOMS = {
+      mechanisms: { cat: MM.cat(), dir: 'pages', pre: 'M', soon: ['More on the way', 'New mechanisms are added to the notebook over time.'] },
+      elements: { cat: MM.elementsCat(), dir: 'elements', pre: 'E', soon: ['More on the way', 'Bushings, couplings, clutches, dowel pins and more are planned.'] },
+      fabrication: { cat: MM.fabCat(), dir: 'fabrication', pre: 'F', soon: ['More techniques on the way', 'Dowels, dovetails, bearings seats, bridging, tolerances and more are planned.'] }
+    };
+    const card = (c, R) => `<a class="card" data-c="${c.category}" data-p="${(c.process || []).join('|')}" href="${R.dir}/${c.slug}.html"><canvas data-s="${c.slug}" data-box aria-hidden="true"></canvas><div class="meta"><div class="num">${R.pre}-${c.num} · ${c.category}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div>${c.process ? `<div class="procs">${c.process.map(x => `<span>${x}</span>`).join('')}</div>` : ''}</div></a>`;
     const soon = (t, s) => `<div class="card soon"><div class="meta"><div class="num">Coming soon</div><div class="name">${t}</div><div class="fn">${s}</div></div></div>`;
-    grid.innerHTML = cat.map(c => card(c, 'pages')).join('') + soon('More on the way', 'New mechanisms are added to the notebook over time.');
-    if (egrid) egrid.innerHTML = els.map(c => card(c, 'elements')).join('') + soon('More on the way', 'Bushings, couplings, clutches, dowel pins and more are planned.');
-    fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; cur = b.dataset.c; fl.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); grid.querySelectorAll('.card').forEach(k => k.style.display = (cur === 'All' || k.dataset.c === cur || k.classList.contains('soon')) ? '' : 'none'); };
+    document.querySelectorAll('[data-room]').forEach(grid => {
+      const R = ROOMS[grid.dataset.room]; if (!R) return;
+      grid.innerHTML = R.cat.map(c => card(c, R)).join('') + soon(R.soon[0], R.soon[1]);
+      let cat = 'All', proc = 'All';
+      const bar = (id, items, label, set) => { const el = document.getElementById(id); if (!el) return; el.innerHTML = ['All'].concat(items).map(c => `<button type="button" data-c="${c}" class="${c === 'All' ? 'on' : ''}" aria-pressed="${c === 'All'}">${c}</button>`).join(''); el.onclick = e => { const b = e.target.closest('button'); if (!b) return; set(b.dataset.c); el.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); apply(); }; };
+      const apply = () => { let n = 0; grid.querySelectorAll('.card:not(.soon)').forEach(k => { const ok = (cat === 'All' || k.dataset.c === cat) && (proc === 'All' || (k.dataset.p || '').split('|').includes(proc)); k.style.display = ok ? '' : 'none'; if (ok) n++; }); const sk = grid.querySelector('.soon'); if (sk) sk.style.display = (cat === 'All' && proc === 'All') ? '' : 'none'; const cn = document.getElementById('roomcount'); if (cn) cn.textContent = n + (n === 1 ? ' shown' : ' shown'); };
+      bar('filters', [...new Set(R.cat.map(c => c.category))], 'category', v => cat = v);
+      bar('pfilters', [...new Set([].concat(...R.cat.map(c => c.process || [])))], 'process', v => proc = v);
+      apply();
+    });
     const hover = new Map(); const cvs = [...document.querySelectorAll('canvas[data-s]')];
     const params = m => { const P = {}; (m.params || []).forEach(q => P[q.key] = q.value); return P; };
     cvs.forEach(cv => {
       const m = MM.registry[cv.dataset.s], per = m.period || TAU;
-      cv._a = per * 0.17; MM.frame(cv, m, cv._a, params(m));
+      cv._a = per * (MM.registry[cv.dataset.s].thumb != null ? MM.registry[cv.dataset.s].thumb : 0.17); MM.frame(cv, m, cv._a, params(m));
       const host = cv.closest('a, .gencard') || cv.parentElement;
       if (cv.hasAttribute('data-live')) { hover.set(cv, 0.45); return; }
       host.addEventListener('mouseenter', () => hover.set(cv, 1)); host.addEventListener('mouseleave', () => hover.delete(cv));

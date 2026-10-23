@@ -186,3 +186,33 @@ body.genpage{margin:0;height:100vh;overflow:hidden;background:var(--chrome2);bac
 .gmenu .gseg{display:flex;width:100%}.gmenu .gseg button{flex:1;padding:6px 4px}
 
 .gsel{font:inherit;font-size:12px;background:var(--chrome);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 6px;max-width:60%}
+
+/* build guide */
+.gguide{position:fixed;inset:0;z-index:900;background:rgba(8,16,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:5vh 14px 14px;overflow:auto}
+.gguide[hidden]{display:none}
+.gg-box{width:min(820px,100%);background:var(--chrome);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);display:flex;flex-direction:column;max-height:90vh}
+.gg-box header{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--line)}
+.gg-box h2{margin:0;font-size:20px}.gg-box header p{margin:3px 0 0;color:var(--faint);font-size:12px}
+.gg-acts{display:flex;gap:6px;flex-wrap:wrap}.gg-acts button{background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 12px}.gg-acts button:hover{border-color:var(--ink)}
+.gg-body{overflow:auto;padding:6px 20px 20px;font-size:13.5px;line-height:1.55}
+.gg-body section{padding:12px 0;border-bottom:1px solid var(--line)}.gg-body section:last-child{border-bottom:0}
+.gg-body h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--red)}
+.gg-body p{margin:6px 0}.gg-body .ok{color:var(--ok)}
+.gg-body .gl{margin:6px 0;padding-left:20px}.gg-body .gl li{margin:4px 0}.gg-body .gl.warn li{color:var(--warn)}.gg-body .gl.warn b{color:var(--warn)}
+.gg-body .gt{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0}.gg-body .gt th{text-align:left;color:var(--faint);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.gg-body .gt th,.gg-body .gt td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+@media(max-width:860px){.gacts{grid-template-columns:repeat(3,minmax(0,1fr))}.gguide{padding:0}.gg-box{max-height:100vh;height:100%;border-radius:0}.gg-body .gt{font-size:12px}}
+@media print{body.gg-open .gapp,body.gg-open .mnsr{display:none!important}body.genpage.gg-open{overflow:visible;height:auto;background:#fff}.gguide{position:static;background:none;padding:0;display:block}.gg-box{max-height:none;box-shadow:none;border:0;color:#000;background:#fff}.gg-acts{display:none}.gg-body{overflow:visible}.gg-body h3,.gg-box header p{color:#444}.gg-body .gl.warn li,.gg-body .gl.warn b{color:#a00}}
+/* check my design */
+.gcheckbtn{font:inherit;font-size:12px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:6px 10px;cursor:pointer;justify-self:start}.gcheckbtn:hover{border-color:var(--red);color:var(--red)}
+.gcheckd .gc-sum{font-size:14px;font-weight:600;margin:4px 0 0}.gcheckd .gc-sum .ok{color:var(--ok)}.gcheckd .gc-sum .no{color:var(--warn)}
+.gcheckd .gg-acts .primary{background:var(--ink);color:var(--chrome);border-color:var(--ink)}.gcheckd .gg-acts [hidden]{display:none}
+.gc-bed{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 20px;border-bottom:1px solid var(--line);font-size:12px;color:var(--faint)}
+.gc-bed label{display:flex;gap:6px;align-items:center}.gc-bed input{width:64px}
+.gc{list-style:none;margin:6px 0;padding:0}.gc li{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.gc li:last-child{border-bottom:0}
+.gc .mk{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;line-height:1}
+.gc li.ok .mk{background:var(--ok);color:var(--chrome)}.gc li.no .mk{background:var(--warn);color:var(--chrome)}
+.gc b{display:block;font-weight:600}.gc li.no b{color:var(--warn)}.gc small{display:block;color:var(--faint);font-size:12px;line-height:1.45;margin-top:2px}
+.gc .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media print{.gcheckd{display:none!important}}
+.gc li.ok{color:var(--ink)}

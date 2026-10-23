@@ -18,9 +18,11 @@
         <a class="gbrand" href="../index.html" title="Back to all mechanisms">Mechanical <b>Notebook</b></a>
         <nav class="gtabs">${G.LIST.map(([id, name]) => `<a href="${id}.html" class="${id === def.id ? 'on' : ''}">${name}</a>`).join('')}</nav>
         <div class="gacts">
+          <button id="gsearch" data-search title="Search mechanisms, generators and parts (Ctrl/⌘ + K)">Search</button>
           <button id="gopen" title="Open a saved design (.json)">Open</button>
           <button id="gsave" title="Download this design as .json">Save</button>
           <button id="gshare" title="Copy a link that reopens this exact design">Share link</button>
+          <button id="gguide" title="A checklist for making this design: cut list, hardware, fits and assembly">Build guide</button>
           <div class="gpop"><button id="gexp" class="primary">Export ▾</button>
             <div class="gmenu" id="gmenu" hidden>
               <div class="gmh">Layout</div>
@@ -37,6 +39,12 @@
                 <label class="gck"><input type="checkbox" id="gle"> Etch an ID (P1, P2…) on each part</label>
                 <label>Largest ID height<span class="gin"><input type="number" id="gleh" value="5" min="1.5" max="20" step="0.5"><span>mm</span></span></label>
                 <p>Labels sit on their own blue layers (LEGEND_NOTES, ETCH_IDS), so you can switch them off or set them to engrave. They are never cut by the part layers.</p>
+              </div>
+              <div class="gmh">Before exporting</div>
+              <div class="gnest">
+                <label class="gck"><input type="checkbox" id="gchk" checked> Check my design before exporting</label>
+                <button type="button" class="gcheckbtn" id="gcheck">Check my design now</button>
+                <p>Lists what was checked, with a ✓ or ✗ beside each item: the design rules, hole sizes, material around holes, overlaps and sheet size.</p>
               </div>
               <button data-x="svg"><b>SVG</b><span>Outlines for laser cutters and vector apps</span></button>
               <button data-x="dxf"><b>DXF</b><span>CAD and CNC. One layer per part, true circles</span></button>
@@ -319,14 +327,53 @@
       return G.nest(flat, { gap: +document.getElementById('gngap').value, sheetW: +document.getElementById('gnw').value, rotate: document.getElementById('gnrot').checked });
     };
     const base = () => def.id + '-' + (def.fileTag ? def.fileTag(S) : 'design');
-    menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
-      const x = b.dataset.x, P = exportParts();
+    const doExport = x => {
+      const P = exportParts();
       const LP = x === 'stl' ? P : G.addLabels(P, { legend: document.getElementById('glg').checked, etch: document.getElementById('gle').checked, h: +document.getElementById('gleh').value || 5 });
       if (x === 'svg') G.download(base() + '.svg', G.toSVG(LP), 'image/svg+xml');
       if (x === 'dxf') G.download(base() + '.dxf', G.toDXF(LP), 'application/dxf');
       if (x === 'stl') G.download(base() + '.stl', G.toSTL(P), 'model/stl');
-      menu.hidden = true; const ns = layout === 'nest' && G._nestStats ? `, nested ${Math.round(G._nestStats.w)} × ${Math.round(G._nestStats.h)} mm, ${Math.round(G._nestStats.use * 100)}% material use${G._nestStats.skipped ? ', ' + G._nestStats.skipped + ' part(s) did not fit' : ''}` : ''; toast(`${x.toUpperCase()} saved${LP._missed && LP._missed.length ? ' (no room to etch ' + LP._missed.join(', ') + ')' : ''}${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}${ns}`);
-    });
+      const ns = layout === 'nest' && G._nestStats ? `, nested ${Math.round(G._nestStats.w)} × ${Math.round(G._nestStats.h)} mm, ${Math.round(G._nestStats.use * 100)}% material use${G._nestStats.skipped ? ', ' + G._nestStats.skipped + ' part(s) did not fit' : ''}` : ''; toast(`${x.toUpperCase()} saved${LP._missed && LP._missed.length ? ' (no room to etch ' + LP._missed.join(', ') + ')' : ''}${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}${ns}`);
+    };
+    /* check my design */
+    const chk = document.getElementById('gchk');
+    try { if (localStorage.getItem('mn-check') === '0') chk.checked = false; } catch (e) { }
+    chk.onchange = () => { try { localStorage.setItem('mn-check', chk.checked ? '1' : '0'); } catch (e) { } };
+    const cd = document.createElement('div'); cd.className = 'gguide gcheckd'; cd.hidden = true; cd.setAttribute('role', 'dialog'); cd.setAttribute('aria-modal', 'true'); cd.setAttribute('aria-label', 'Check my design');
+    cd.innerHTML = '<div class="gg-box"><header><div><h2>Check my design</h2><p class="gc-sum"></p></div><div class="gg-acts"><button type="button" data-a="go" class="primary"></button><button type="button" data-a="close">Back to the design</button></div></header>'
+      + '<div class="gc-bed"><span class="gc-bl"></span><label><input type="number" data-bed="0" min="10" step="10"> ×</label><label><input type="number" data-bed="1" min="10" step="10"> mm</label></div><div class="gg-body"></div></div>';
+    document.body.appendChild(cd);
+    let cFmt = null, cBed = null;
+    const closeCheck = () => { cd.hidden = true; document.body.classList.remove('gg-open'); };
+    const runCheck = () => {
+      let res, html; const P = (() => { try { return exportParts(); } catch (e) { return null; } })();
+      try { res = G.checkDesign(def, S, { format: cFmt, layout, exported: P || undefined, bed: cBed || undefined }); html = G.checkHTML(res); } catch (e) { console.error(e); res = null; html = '<p>The check could not be run for this design.</p>'; }
+      cBed = res ? res.bed.slice() : cBed;
+      const body = cd.querySelector('.gg-body'), top = body.scrollTop; body.innerHTML = html; body.scrollTop = top;
+      const sum = cd.querySelector('.gc-sum'), go = cd.querySelector('[data-a="go"]');
+      if (res) { const ok = res.total - res.fails; sum.innerHTML = res.fails ? `<span class="no">✗ ${res.fails} of ${res.total} checks need attention</span>` : `<span class="ok">✓ All ${res.total} checks passed</span>`; sum.dataset.state = res.fails ? 'no' : 'ok'; }
+      go.hidden = !cFmt; if (cFmt) go.textContent = (res && res.fails ? 'Export ' + cFmt.toUpperCase() + ' anyway' : 'Export ' + cFmt.toUpperCase());
+      cd.querySelector('.gc-bl').textContent = cFmt === 'stl' ? 'Largest print bed:' : 'Sheet size:';
+      cd.querySelectorAll('[data-bed]').forEach(i => { if (document.activeElement !== i && cBed) i.value = cBed[+i.dataset.bed]; });
+    };
+    const openCheck = x => { cFmt = x; cBed = null; cd.hidden = false; document.body.classList.add('gg-open'); runCheck(); cd.querySelector('[data-a="close"]').focus(); };
+    cd.addEventListener('click', e => { const a = e.target.dataset && e.target.dataset.a; if (e.target === cd || a === 'close') closeCheck(); if (a === 'go') { const x = cFmt; closeCheck(); doExport(x); } });
+    cd.addEventListener('input', e => { if (e.target.dataset.bed != null) { const v = [...cd.querySelectorAll('[data-bed]')].map(i => Math.max(10, +i.value || 10)); cBed = v; runCheck(); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cd.hidden) closeCheck(); });
+    document.getElementById('gcheck').onclick = () => { menu.hidden = true; openCheck(null); };
+    menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { menu.hidden = true; if (chk.checked) openCheck(b.dataset.x); else doExport(b.dataset.x); });
+    /* build guide dialog */
+    const gd = document.createElement('div'); gd.className = 'gguide'; gd.hidden = true; gd.setAttribute('role', 'dialog'); gd.setAttribute('aria-modal', 'true'); gd.setAttribute('aria-label', 'Build guide');
+    gd.innerHTML = '<div class="gg-box"><header><div><h2>Build guide</h2><p></p></div><div class="gg-acts"><button type="button" data-a="print">Print or save as PDF</button><button type="button" data-a="close">Close</button></div></header><div class="gg-body"></div></div>';
+    document.body.appendChild(gd);
+    const closeGuide = () => { gd.hidden = true; document.body.classList.remove('gg-open'); };
+    document.getElementById('gguide').onclick = () => {
+      let html; try { html = G.buildGuide(def, S); } catch (e) { html = '<p>The guide could not be built for this design.</p>'; console.error(e); }
+      gd.querySelector('.gg-body').innerHTML = html; gd.querySelector('header p').textContent = def.title + ' · ' + (def.fileTag ? def.fileTag(S) : 'design');
+      if (window.MNGloss) MNGloss.apply(gd.querySelector('.gg-body')); gd.hidden = false; document.body.classList.add('gg-open'); gd.querySelector('.gg-body').scrollTop = 0; gd.querySelector('[data-a="close"]').focus();
+    };
+    gd.addEventListener('click', e => { if (e.target === gd || e.target.dataset.a === 'close') closeGuide(); if (e.target.dataset.a === 'print') window.print(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !gd.hidden) closeGuide(); });
     document.getElementById('gsave').onclick = () => { G.download(base() + '.json', JSON.stringify({ generator: def.id, version: 1, settings: S }, null, 2), 'application/json'); toast('Design saved'); };
     const file = document.getElementById('gfile');
     document.getElementById('gopen').onclick = () => file.click();
