@@ -92,7 +92,7 @@ The home page is five room cards (Mechanisms, Elements, Generators, Combine, Fab
 
 1. Add an entry to `js/fab-catalog.js` (slug, number, name, category, process list, one-line function, notes, applications, fun fact).
 2. Create `js/fab/<slug>.js` calling `MM.register({ slug, view, params, draw, readout, panels })`. `MM.cycle(a)` gives a 0 to 1 and back animation, and `g.dim(...)` draws dimension lines.
-3. Optionally add a list of "ways to make it better" cards for it in `js/fab-tricks.js` (title, text, the process `p` and material `m` it sits under, tag badges, and a small 3D drawing built with the helpers at the top of that file). They appear under the animation, grouped by process then material, with filter buttons.
+3. Optionally add a list of "ways to make it better" cards for it in `js/fab-tricks.js` (title, text, the process `p` and material `m` it sits under, tag badges, and a small 3D drawing built with the helpers at the top of that file). They appear under the animation, grouped by process then material, with filter buttons. The drawings render like a CAD view: hidden parts are fully hidden, `S.hole` / `S.slot` / `S.engrave` really cut into the parts drawn before them (walls and floor in darker gray, see-through holes dark), and shapes wrapped in `S.u(...)` are one body so no line is drawn where they touch. Colours: `p` stays in place (white), `a` is inserted (orange).
 4. Run `node build.js`. The page, room card, filter, search entry and footer link appear on their own.
 
 ## Add a mechanism or element
