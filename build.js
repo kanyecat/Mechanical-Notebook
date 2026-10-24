@@ -34,7 +34,7 @@ const nav = (p, here) => `<a class="skip" href="#app">Skip to content</a>
         <a href="${p}generators/cams.html"><b>Cam generator</b><span>Motion programs, followers, checks</span></a>
         <a href="${p}generators/pulleys.html"><b>Pulley generator</b><span>Belt drives, idlers, lifting tackle</span></a>
         <a href="${p}generators/chains.html"><b>Chain and sprocket generator</b><span>Roller chain, sprockets, multi-stage drives</span></a>
-        <a href="${p}generators/hinges.html"><b>Living hinge generator</b><span>Slit, wave, torsion and diamond patterns</span></a>
+        <a href="${p}generators/hinges.html"><b>Living hinge generator</b><span>Slit, wave, cross, fabric and diamond patterns</span></a>
       </div></div>
     <a href="${p}combine.html"${here === 'c' ? ' aria-current="page"' : ''}>Combine</a>
     <a href="${p}fabrication.html"${here === 'f' ? ' aria-current="page"' : ''}>Fabrication</a>
@@ -82,7 +82,7 @@ const GENS = {
   cams: ['Cam generator', 'Program rise, dwell and fall motions, pick a follower, and check pressure angle and undercut.', 'cam follower motion program cycloidal harmonic dwell rise fall lift pressure angle undercut roller flat knife'],
   pulleys: ['Pulley generator', 'Belt drives with idlers and shared shafts, and block-and-tackle lifting systems.', 'belt pulley idler wrap angle slip tension block and tackle lifting load sheave rope timing v-belt'],
   chains: ['Chain and sprocket generator', 'Roller chain and sprockets in ANSI and ISO sizes with attachments, multiple chains and sprocket designs.', 'roller chain sprocket ansi iso pitch attachment plate tab multi strand idler tensioner skeleton'],
-  hinges: ['Living hinge generator', 'Laser-cut flexure patterns that let a stiff sheet bend: straight, meander, torsion, wave, cross and fillet lattices, diamonds and beehive. Estimates how far it bends in your material and flags fragile or too-stiff designs.', 'living hinge flexure kerf bending lattice slit pattern straight meander serpentine torsion wave cross fillet diamond beehive honeycomb basswood birch plywood mdf acrylic bend laser cut flex test sheet pattern only svg dxf']
+  hinges: ['Living hinge generator', 'Laser-cut flexure patterns that let a stiff sheet bend: straight, meander, wave, cross and fillet lattices, diamonds, fabric (Greek key) and beehive. Estimates how far it bends in your material and flags fragile or too-stiff designs.', 'living hinge flexure kerf bending lattice slit pattern straight meander serpentine wave cross fillet diamond fabric greek key beehive honeycomb basswood birch plywood mdf acrylic bend laser cut flex test sheet pattern only svg dxf']
 };
 const PRESETS = [   // deep links into a generator: [generator, title, description, settings, extra words]
   ['gears', 'Bevel gears', 'A pair of cone gears for shafts that meet at an angle, cut as stacked layers or one tapered part.', { mode: 'bevel' }, 'bevel miter right angle tredgold'],
@@ -94,7 +94,7 @@ const PRESETS = [   // deep links into a generator: [generator, title, descripti
   ['gears', 'Skeleton gears', 'Gears with spokes or holes cut in the body to save material and weight.', { gdesign: 'spokes' }, 'skeleton spokes holes lightweight pockets teardrop swirl'],
   ['linkages', 'Slider-crank', 'A crank, rod and slider, with the stroke and time ratio.', { kind: 'slider' }, 'slider crank piston engine stroke'],
   ['linkages', 'Multi-link builder', 'Build your own linkage from pivots and links and trace any point.', { kind: 'multi' }, 'multi link jansen walking leg sixbar'],
-  ['hinges', 'Torsion hinge test sheet', 'Four torsion hinges with 5, 10, 20 and 30 mm links side by side, to find the one that bends best in your sheet.', { pat: 'torsion', out: 'sheet', vary: 'L', vals: '5, 10, 20, 30', W: 30 }, 'torsion living hinge test link length'],
+  ['hinges', 'Living hinge test sheet', 'Four straight-lattice hinges with 10, 15, 20 and 30 mm cuts side by side, to find the one that bends best in your sheet.', { pat: 'straight', out: 'sheet', vary: 'L', vals: '10, 15, 20, 30', W: 30 }, 'living hinge test sheet cut length lattice'],
   ['hinges', 'Wavy slit hinge pattern', 'Just the pattern, ready to paste over the place on your part that should bend.', { pat: 'wave', out: 'pattern' }, 'wavy slit pattern paste'],
   ['pulleys', 'Block and tackle', 'Lifting systems with mechanical advantage, effort and rope pulled.', { mode: 'lift' }, 'block tackle lifting hoist winch mechanical advantage']
 ];

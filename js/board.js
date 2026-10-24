@@ -32,7 +32,7 @@
 
   async function api(path, opt) {
     opt = opt || {}; const t = await token();
-    const r = await fetch(B.url + '/rest/v1/' + path, { method: opt.method || 'GET', headers: Object.assign({ apikey: B.anonKey, Authorization: 'Bearer ' + (t || B.anonKey), 'Content-Type': 'application/json' }, opt.prefer ? { Prefer: opt.prefer } : {}), body: opt.body ? JSON.stringify(opt.body) : undefined });
+    const r = await fetch(B.url + '/rest/v1/' + path, { method: opt.method || 'GET', headers: Object.assign({ apikey: B.anonKey, 'Content-Type': 'application/json' }, t ? { Authorization: 'Bearer ' + t } : {}, opt.prefer ? { Prefer: opt.prefer } : {}), body: opt.body ? JSON.stringify(opt.body) : undefined });
     if (!r.ok) { let m = 'Something went wrong (' + r.status + ').'; try { const j = await r.json(); if (j.message) m = j.message; } catch (e) { } throw new Error(m); }
     return r.status === 204 ? null : r.json().catch(() => null);
   }

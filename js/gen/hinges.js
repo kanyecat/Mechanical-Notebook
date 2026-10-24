@@ -1,6 +1,6 @@
 /* Mechanical Notebook: living hinge (flexure) generator. MIT licence.
    Makes cut patterns that let a stiff sheet bend. The patterns follow tested lattice hinges: straight lattice,
-   meander, torsion (H) links, wave lattice, cross lattice, fillet lattice, diamonds and beehive.
+   meander, wave lattice, cross lattice, fillet lattice, diamonds and beehive.
    Output a test piece, the pattern on its own (to paste into your own drawing), or a test sheet of several versions.
    The patterns themselves come from js/hinge-pattern.js, which the fabrication pages use too.
    The bend estimate is a rough torsion model: each spring (the strip between two neighbouring cuts) can twist about
@@ -18,15 +18,12 @@
     meander: { name: 'Meander', short: 'Meander', k: 1.3, rate: 'Very flexible',
       about: 'Slots cut alternately from the top and the bottom edge leave one long zig-zag spring. Easy to design and very flexible along a strip, but weak if pulled. The cuts must reach the edges.',
       fields: [['mg', 'g', 'End bridge', 'Material left where a slot stops short of the edge.'], ['md', 'd', 'Strip width', 'Distance between slots: the width of the zig-zag strip.']] },
-    torsion: { name: 'Torsion links', short: 'Torsion', k: 1.2, rate: 'Very flexible',
-      about: 'H-shaped cuts in columns leave short bars that twist. Very flexible for its size. A shorter link length (more H shapes in each column) makes it stiffer; more columns make it bend further.',
-      fields: [['tL', 'L', 'Link length', 'Length of each H. Longer links twist more easily.'], ['tg', 'g', 'Bridge', 'Material between two H shapes in a column.'], ['tc', 'd', 'Column pitch', 'Width of each column of H shapes.'], ['tb', 'bar', 'Torsion bar', 'Width of the bars between columns, the parts that twist.']] },
     wave: { name: 'Wave lattice', short: 'Wave', k: 1.6, rate: 'Flexible',
-      about: 'Each cut runs straight, curves over by about one row, runs on, then curves back, so all the cuts nest like waves. In testing it bent in one direction well for such short springs, but not in two directions.',
-      fields: [['wL', 'L', 'Cut length', ''], ['wg', 'g', 'Bridge', 'Gap between two cuts in a row. The gaps are staggered on every other row.'], ['wd', 'd', 'Spring width', 'Distance between neighbouring cuts.'], ['wa', 'amp', 'Wave depth', 'How far each cut curves over. About one spring width looks like the classic wave lattice.']] },
-    cross: { name: 'Cross lattice', short: 'Cross', k: 1.6, rate: 'Most flexible',
-      about: 'Slits with a fork at each end (>—<). In testing this was the most flexible lattice. In thin sheet it can even bend a little on a diagonal.',
-      fields: [['cL', 'L', 'Cut length', ''], ['cg', 'g', 'Bridge', 'Must leave room for the forks of the cuts above and below.'], ['cd', 'd', 'Spring width', ''], ['cf', 'fork', 'Fork size', 'How far each fork reaches sideways.']] },
+      about: 'Each cut runs flat, steps over by about one row, runs on, steps back by half of that and runs flat again (‾‾\\__/‾). Every line of cuts is the same, so the cuts nest like waves, and in each line the end of one cut runs past the start of the next, half a row to the side. Copied from a tested laser-cut sheet. In testing it bent in one direction well for such short springs, but not in two directions.',
+      fields: [['wL', 'L', 'Cut length', ''], ['wg', 'g', 'Overlap', 'How far the end of one cut runs past the start of the next one in the same line. The strips squeeze between the two ends.'], ['wd', 'd', 'Spring width', 'Distance between neighbouring lines of cuts.'], ['wa', 'amp', 'Wave depth', 'How far each cut steps over (it steps back half as far near its end). About 0.9 × the spring width in the tested pattern.']] },
+    cross: { name: 'Cross lattice', short: 'Cross', k: 3, rate: 'Most flexible',
+      about: 'Slits with a fork at each end (>—<), in rows shifted half a step so the forks of neighbouring rows interlock into rows of crosses. In testing this was the most flexible lattice. In thin sheet it can even bend a little on a diagonal.',
+      fields: [['cL', 'L', 'Cut length', ''], ['cg', 'g', 'Gap', 'Space between two cuts in a row, from fork to fork. About the same as the cut length makes the forks of neighbouring rows line up.'], ['cd', 'd', 'Spring width', 'Distance between rows of cuts.'], ['cf', 'fork', 'Fork size', 'How far each fork reaches sideways, toward the next row (about two thirds of the spring width in the tested pattern).']] },
     fillet: { name: 'Fillet lattice', short: 'Fillet', k: 1.4, rate: 'Flexible, strong',
       about: 'Closed cut-outs with round ends and a narrow waist. Sharp corners are where a spring breaks; rounding them spreads the twisting stress more evenly along the spring.',
       fields: [['fL', 'L', 'Cut-out length', ''], ['fg', 'g', 'Bridge', ''], ['fd', 'd', 'Row spacing', ''], ['fb', 'dw', 'Bulb width', 'Width of the round ends.'], ['fn', 'neck', 'Waist width', 'Width of the narrow middle.']] },
@@ -34,8 +31,8 @@
       about: 'Closed diamond cut-outs. Decorative, stretches a little and can follow a gentle double curve, but stiffer than slits of the same size.',
       fields: [['dL', 'L', 'Diamond length', ''], ['dw', 'dw', 'Diamond width', ''], ['dg', 'g', 'Bridge', ''], ['dd', 'd', 'Row spacing', '']] },
     fabric: { name: 'Fabric (Greek key)', short: 'Fabric', k: 1.6, rate: 'Flexible, drapes',
-      about: 'Square tiles, each cut as a double square spiral (a Greek key): two arms wind into the centre in opposite directions and meet there, and neighbouring tiles are mirrored. The long spiral strips let the sheet drape like fabric and follow gentle curves. Thin plywood or basswood works best.',
-      fields: [['ftile', 'tile', 'Tile size', 'Each square holds one double spiral.'], ['farm', 'arm', 'Spiral width', 'Width of the strip between the two spiral arms, and between tiles.']] },
+      about: 'Interlocking Greek keys on a square grid: square spirals that wind both ways, joined by long cuts, with every strip the same width. Copied from a tested laser-cut sheet. The long, narrow strips let the sheet drape like fabric and follow gentle curves. Thin plywood or basswood works best.',
+      fields: [['farm', 'arm', 'Strip width', 'The grid step: every cut sits this far from the next one, so it sets the width of every strip and the size of the keys (one repeat is 10 steps).']] },
     hive: { name: 'Beehive', short: 'Beehive', k: 1, rate: 'Least flexible',
       about: 'Closed hexagons. It looks like it should bend in two directions, but in testing it was the least flexible lattice of all: the springs between the cells are very short. Use it as a decorative panel.',
       fields: [['hs', 'hs', 'Cell size', 'Across the flats of each hexagon.'], ['hw', 'hw', 'Wall width', 'Material between neighbouring cells.']] }
@@ -60,8 +57,8 @@
   const keyOf = (S, p) => (PAT[S.pat].fields.find(x => x[1] === p) || [])[0];
   const vals = S => String(S.vals).split(/[,;\s]+/).map(Number).filter(v => isFinite(v) && v > 0).slice(0, 12);
   const VARY = { L: 'Length', g: 'Bridge', d: 'Spacing', x: 'Detail' };
-  const EXTRA = { fabric: 'arm', wave: 'amp', cross: 'fork', fillet: 'dw', diamond: 'dw', torsion: 'bar', hive: 'hw', straight: 'd', meander: 'd' };
-  const varyParam = S => S.vary === 'x' ? EXTRA[S.pat] : S.pat === 'hive' ? (S.vary === 'L' ? 'hs' : 'hw') : (S.pat === 'meander' && S.vary === 'L') ? 'g' : S.vary;
+  const EXTRA = { fabric: 'arm', wave: 'amp', cross: 'fork', fillet: 'dw', diamond: 'dw', hive: 'hw', straight: 'd', meander: 'd' };
+  const varyParam = S => S.pat === 'fabric' ? 'arm' : S.vary === 'x' ? EXTRA[S.pat] : S.pat === 'hive' ? (S.vary === 'L' ? 'hs' : 'hw') : (S.pat === 'meander' && S.vary === 'L') ? 'g' : S.vary;
   const shift = (cuts, dx, dy) => cuts.map(c => ({ pts: c.pts.map(([x, y]) => [x + dx, y + dy]), closed: c.closed }));
   const tag = (S, P) => PAT[S.pat].fields.map(([, p, l]) => l[0] + f(P[p])).join(' ');
 
@@ -99,8 +96,8 @@
   }
 
   /* the picker thumbnails are drawn from the real pattern code, so each one looks like the pattern it makes */
-  const ICONP = { straight: { L: 11, g: 3, d: 5 }, meander: { g: 4, d: 5.5 }, torsion: { L: 13, g: 3, d: 11, bar: 3 }, wave: { L: 30, g: 3, d: 4, amp: 4 },
-    cross: { L: 11, g: 7, d: 6.5, fork: 2.6 }, fillet: { L: 12, g: 2.5, d: 7, dw: 4.6, neck: 1.6 }, diamond: { L: 12, g: 2.5, d: 6.5, dw: 4.2 }, fabric: { tile: 14, arm: 2.3 }, hive: { hs: 8, hw: 2 } };
+  const ICONP = { straight: { L: 11, g: 3, d: 5 }, meander: { g: 4, d: 5.5 }, wave: { L: 24, g: 2.9, d: 3.4, amp: 3.1 },
+    cross: { L: 8.8, g: 8.3, d: 2.6, fork: 1.8 }, fillet: { L: 12, g: 2.5, d: 7, dw: 4.6, neck: 1.6 }, diamond: { L: 12, g: 2.5, d: 6.5, dw: 4.2 }, fabric: { arm: 1.45 }, hive: { hs: 8, hw: 2 } };
   const icon = Object.fromEntries(Object.keys(PAT).map(k => {
     const r = H.make(Object.assign({ pat: k, W: 44, H: 28, cut: 'line', open: 1, e: 0 }, ICONP[k]));
     const d = r.cuts.map(c => 'M' + c.pts.map(([x, y]) => (2 + x).toFixed(1) + ' ' + (30 - y).toFixed(1)).join('L') + (c.closed ? 'Z' : '')).join('');
@@ -111,23 +108,24 @@
   /* the smallest and largest values that can be cut at all: a cut wider than the strip next to it would cut it away */
   const LIM = 0.3;   // the thinnest strip we let anyone draw, in mm, after the kerf
   const mins = {
-    d: S => { const P = params(S), extra = S.pat === 'cross' ? P.fork : S.pat === 'fillet' ? P.dw : S.pat === 'diamond' ? P.dw / 2 : S.pat === 'torsion' ? P.bar : 0; return +(cutW(S) + LIM + extra).toFixed(2); },
+    d: S => { const P = params(S), extra = S.pat === 'cross' ? P.fork : S.pat === 'fillet' ? P.dw : S.pat === 'diamond' ? P.dw / 2 : 0; return +(cutW(S) + LIM + extra).toFixed(2); },
     g: S => +(cutW(S) + LIM).toFixed(2),
-    bar: S => +(cutW(S) + LIM).toFixed(2), hw: S => +(cutW(S) + LIM).toFixed(2), arm: S => +(cutW(S) + LIM).toFixed(2), tile: S => +(6 * S.farm).toFixed(1)
+    hw: S => +(cutW(S) + LIM).toFixed(2), arm: S => +(cutW(S) + LIM).toFixed(2)
   };
   const maxs = {
-    amp: S => +(4 * S.wd).toFixed(2), tile: 200, fork: S => +Math.max(0, S.cd - cutW(S) - LIM).toFixed(2),
-    dw: S => +Math.max(0.2, (S.pat === 'fillet' ? S.fd : 2 * S.dd) - cutW(S) - LIM).toFixed(2), neck: S => +Math.max(0.1, S.fb - 0.2).toFixed(2), bar: S => +Math.max(0.2, S.tc - cutW(S) - LIM).toFixed(2)
+    amp: S => +Math.max(0.2, 2 * (S.wd - cutW(S) - LIM)).toFixed(2), g: S => S.pat === 'wave' ? +Math.max(0.5, S.wL / 3).toFixed(1) : 500, arm: 20, fork: S => +Math.max(0, S.cd - cutW(S) - LIM).toFixed(2),
+    dw: S => +Math.max(0.2, (S.pat === 'fillet' ? S.fd : 2 * S.dd) - cutW(S) - LIM).toFixed(2), neck: S => +Math.max(0.1, S.fb - 0.2).toFixed(2)
   };
-  const WHY = { tile: 'a tile needs room for a full turn of each spiral arm', arm: 'the strip would be cut away', d: 'any closer and the cuts would meet', g: 'any shorter and the cuts would meet', bar: 'the bar would be cut away', hw: 'the wall would be cut away',
-    amp: 'a bigger step would run into the next row', fork: 'bigger forks would run into the next row', dw: 'wider cut-outs would run into the next row', neck: 'the waist must be narrower than the bulbs' };
+  const WHY = { arm: 'the strip would be cut away', d: 'any closer and the cuts would meet', g: 'any shorter and the cuts would meet', hw: 'the wall would be cut away',
+    amp: 'the step back would run into the next line of cuts', fork: 'bigger forks would run into the next row', dw: 'wider cut-outs would run into the next row', neck: 'the waist must be narrower than the bulbs' };
 
   G.create({
     id: 'hinges', formats: ['svg', 'dxf'], title: 'Living hinge generator', subtitle: 'Cut patterns that let a flat, stiff sheet bend. Export a test piece, a test sheet, or just the pattern to paste into your own drawing.',
+    fixState(S) { if (!PAT[S.pat]) S.pat = 'straight'; },   // e.g. an old link to the torsion pattern, which was removed
     defaults: {
       pat: 'straight', out: 'piece', W: 40, H: 60, open: 1, mat: 'birch', thick: 3, ang: 90,
-      sL: 20, sg: 3, sd: 1.6, mg: 3, md: 3, tL: 10, tg: 2.5, tc: 5, tb: 1.2, wL: 24, wg: 3, wd: 2.4, wa: 2.4, ftile: 14, farm: 1.6,
-      cL: 16, cg: 4, cd: 2, cf: 0.8, fL: 16, fg: 2, fd: 3.2, fb: 2.2, fn: 0.8, dL: 14, dg: 2, dd: 2.6, dw: 2, hs: 6, hw: 1.2,
+      sL: 20, sg: 3, sd: 1.6, mg: 3, md: 3, wL: 17.3, wg: 2.1, wd: 2.4, wa: 2.2, farm: 1.6,
+      cL: 10.2, cg: 9.6, cd: 3, cf: 2, fL: 16, fg: 2, fd: 3.2, fb: 2.2, fn: 0.8, dL: 14, dg: 2, dd: 2.6, dw: 2, hs: 6, hw: 1.2,
       cut: 'line', sw: 0.5, kerf: 0.15, ends: 25, engr: 1, vary: 'L', vals: '10, 15, 20, 30', guide: 1,
       grid: 1, guides: 1, labels: 1, rpm: 0
     },
@@ -154,7 +152,7 @@
       ui.section('Pattern sizes', () => {
         Object.keys(PAT).forEach(pk => PAT[pk].fields.forEach(([key, p, label, help]) => {
           const o = { unit: 'mm', step: 0.1, max: 500, show: S => S.pat === pk, help: help || undefined, why: WHY[p] };
-          o.min = mins[p] || (p === 'L' ? (S => +Math.max(1, (S.pat === 'cross' ? 2 * S.cf : 0) + 1).toFixed(1)) : p === 'hs' ? 1 : 0.2);
+          o.min = mins[p] || (p === 'L' ? (S => +Math.max(1, S.pat === 'wave' ? 2 * (S.wg + 0.3 * S.wd) + 2.6 * S.wa + 0.5 : (S.pat === 'cross' ? 2 * S.cf : 0) + 1).toFixed(1)) : p === 'hs' ? 1 : 0.2);
           if (maxs[p]) o.max = maxs[p];
           ui.num(key, label, o);
         }));
@@ -204,8 +202,8 @@
     exportParts: S => parts(S),
     info(S) {
       const P = params(S), all = parts(S), cw = cutW(S), m = MAT[S.mat] || MAT.other, b = bend(S, P);
-      const web = H.web(P) - cw, bridge = (S.pat === 'hive' ? P.hw : S.pat === 'fabric' ? P.arm : P.g) - cw, len = all.reduce((s, p) => s + (p.stat ? p.stat.len : 0), 0), n = all.reduce((s, p) => s + (p.stat ? p.stat.n : 0), 0);
-      const K = p => keyOf(S, p), sizeKeys = [K('L'), K('d'), K('hs'), K('hw'), K('tile'), K('arm'), 'W'].filter(Boolean);
+      const web = H.web(P) - cw, bridge = (S.pat === 'hive' ? P.hw : S.pat === 'fabric' ? P.arm : S.pat === 'wave' ? H.web(P) : P.g) - cw, len = all.reduce((s, p) => s + (p.stat ? p.stat.len : 0), 0), n = all.reduce((s, p) => s + (p.stat ? p.stat.n : 0), 0);
+      const K = p => keyOf(S, p), sizeKeys = [K('L'), K('d'), K('hs'), K('hw'), K('arm'), 'W'].filter(Boolean);
       const rate = b.max < 45 ? 'Very stiff' : b.max < 90 ? 'Stiff' : b.max < 180 ? 'Flexible' : 'Very flexible';
       const rows = [
         ['Flexibility', `${rate} · bends about ${f(Math.min(b.max, 999), 0)}° before cracking`, b.max < S.ang ? 'soft' : 0],
@@ -213,7 +211,7 @@
         ['Thinnest strip left', `${f(Math.max(0, web), 2)} mm`, web < m[2] ? 'soft' : 0],
         ['Cuts', `${n} · ${len > 1000 ? f(len / 1000, 2) + ' m' : f(len, 0) + ' mm'} of cutting`]
       ];
-      const wKeys = [K('d'), K('amp'), K('fork'), K('dw'), K('bar'), K('hw'), K('arm'), 'kerf', S.cut === 'slot' ? 'sw' : null].filter(Boolean);
+      const wKeys = [K('d'), K('amp'), K('fork'), K('dw'), K('hw'), K('arm'), 'kerf', S.cut === 'slot' ? 'sw' : null].filter(Boolean);
       if (web <= 0.05) rows.push(['Cuts overlap', 'The cuts touch or cross, so pieces will fall out. Widen the spacing or make the cut shapes smaller.', 'block', wKeys]);
       else if (web < LIM) rows.push(['Strips burn away', `Only ${f(web, 2)} mm is left between cuts after the kerf. The laser will burn straight through it.`, 'block', wKeys]);
       else if (web < m[2]) rows.push(['Fragile strips', `${f(web, 2)} mm between cuts is thinner than the ${f(m[2], 1)} mm that ${m[0].toLowerCase()} needs. It may snap when you bend it. Widen the spacing.`, 2, wKeys]);

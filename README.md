@@ -32,7 +32,7 @@ node serve.js        # or: yarn dev  →  http://localhost:5173
 | `js/analytics.js` | Google Analytics 4 visit counting. Paste your Measurement ID into `GA_ID` to turn it on |
 | `js/engine.js`, `js/learn.js` | Shared drawing engine and the "Do the math" panel |
 | `generators/`, `js/gen/` | Gear, linkage, cam, pulley, chain and living hinge generators with SVG / DXF / STL export |
-| `js/hinge-pattern.js` | Living hinge cut patterns (straight, wavy, torsion, diamond), shared by the hinge generator and the fabrication cards |
+| `js/hinge-pattern.js` | Living hinge cut patterns (straight, meander, wave, cross, fillet, diamond, fabric, beehive), shared by the hinge generator and the fabrication cards |
 | `test/` | `node test/harness.js` checks every mechanism for errors and NaNs |
 
 ## Generators
@@ -44,7 +44,7 @@ exported from the check dialog (Export anyway). Problem rows from `info(S)` can 
 keys; older rules are sorted by `G.severity` and `KEYMAP` in `js/gen/core.js`.
 
 - **Living hinges** – cut patterns that let a stiff sheet bend, following tested lattice hinges: straight lattice,
-  meander, torsion (H) links, wave, cross and fillet lattices, diamonds and beehive. Pick the material (basswood, birch
+  meander, wave, cross and fillet lattices, diamonds, fabric (Greek key) and beehive. Pick the material (basswood, birch
   plywood, MDF, cast acrylic, card) and the bend the part must make; a rough torsion model estimates how far it bends
   before cracking and flags designs that are too stiff, fragile or impossible. Make a test piece, a test sheet (one size changed per strip, each engraved with its settings), or just the
   pattern with the hinge area outline on its own green layer, to paste into your own drawing. Slits are exported as

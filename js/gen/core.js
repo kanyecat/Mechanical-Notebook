@@ -33,6 +33,7 @@
   G.create = function (def) {
     const D = def.defaults, S = Object.assign({}, D), H = readHash();
     Object.keys(D).forEach(k => { if (H[k] !== undefined && typeof H[k] === typeof D[k]) S[k] = H[k]; });
+    if (def.fixState) def.fixState(S);   // lets a generator repair settings from an old link (a pattern that was removed, say)
     let t = 0, playing = true, dir = 1, last = performance.now(), layout = 'flat';
     const app = document.getElementById('gen');
     app.innerHTML = `
@@ -452,7 +453,7 @@
     file.onchange = () => { const f = file.files[0]; if (!f) return; f.text().then(txt => { try { const j = JSON.parse(txt); if (j.generator && j.generator !== def.id) return toast('That file is for the ' + j.generator + ' generator'); load(j.settings || j); toast('Design opened'); } catch (e) { toast('Could not read that file'); } }); file.value = ''; };
     document.getElementById('greset').onclick = () => { load(D); t = 0; toast('Back to the default design'); };
     document.getElementById('gshare').onclick = () => { writeHash(); (navigator.clipboard ? navigator.clipboard.writeText(location.href) : Promise.reject()).then(() => toast('Link copied'), () => toast('Copy the address bar to share')); };
-    function load(o) { Object.keys(D).forEach(k => { if (o[k] !== undefined && typeof o[k] === typeof D[k]) S[k] = o[k]; }); changed(); fit(); }
+    function load(o) { Object.keys(D).forEach(k => { if (o[k] !== undefined && typeof o[k] === typeof D[k]) S[k] = o[k]; }); if (def.fixState) def.fixState(S); changed(); fit(); }
     function toast(msg) { const el = document.getElementById('gtoast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), 1800); }
 
     /* ---------- settings live in the URL hash so a link reproduces the design ---------- */
