@@ -38,3 +38,31 @@
   }
   if (window.MNGloss) document.querySelectorAll('[data-gloss]').forEach(el => MNGloss.apply(el));
 })();
+
+/* Home page "What do you want to do?": pick a motion from the list to see its options. Without JavaScript every card shows. */
+(function () {
+  const box = document.querySelector('[data-mpick]'); if (!box) return;
+  const btn = box.querySelector('.mpbtn'), lst = box.querySelector('.mplist'), opts = [...lst.querySelectorAll('[role="option"]')];
+  const goals = document.querySelector('.goals'), cards = [...goals.querySelectorAll('.goal')];
+  goals.classList.add('mpicked');
+  const hint = document.createElement('p'); hint.className = 'mphint'; hint.textContent = 'Pick a motion above to see the mechanisms and generators for it.'; goals.before(hint);
+  const open = v => { lst.hidden = !v; btn.setAttribute('aria-expanded', v); if (v) (lst.querySelector('[aria-selected="true"]') || opts[0]).focus(); };
+  const pick = (id, focus) => {
+    const o = opts.find(x => x.dataset.g === id); if (!o) return;
+    opts.forEach(x => x.setAttribute('aria-selected', x === o)); btn.querySelector('.gi').textContent = o.querySelector('.gi').textContent; btn.querySelector('.mpt').textContent = o.querySelector('b').textContent;
+    cards.forEach(c => c.classList.toggle('on', c.id === 'goal-' + id)); hint.hidden = true; box.classList.add('chosen');
+    history.replaceState(null, '', '#goal-' + id); open(false); if (focus) btn.focus();
+  };
+  btn.addEventListener('click', e => { e.stopPropagation(); open(lst.hidden); });
+  opts.forEach((o, i) => {
+    o.addEventListener('click', () => pick(o.dataset.g, true));
+    o.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); (opts[i + 1] || opts[0]).focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); (opts[i - 1] || opts[opts.length - 1]).focus(); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(o.dataset.g, true); }
+      else if (e.key === 'Escape') { open(false); btn.focus(); }
+    });
+  });
+  document.addEventListener('click', e => { if (!box.contains(e.target)) open(false); });
+  const m = location.hash.match(/^#goal-(.+)$/); if (m) pick(m[1]);
+})();

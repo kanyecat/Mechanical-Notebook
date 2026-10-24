@@ -121,3 +121,25 @@ The home page is five room cards (Mechanisms, Elements, Generators, Combine, Fab
 ## Licence
 
 MIT – see `LICENSE`. Inspired by *507 Mechanical Movements* (Henry T. Brown, 1868).
+
+## Requests and ideas board
+
+`requests.html` is a public board: anyone can post an idea, request or mistake and comment, without an account. The site
+owner marks each post New, Read, Planned, Fixed or Resolved, adds a note, comments as the owner, and can hide or delete
+posts and comments. It is stored in a free [Supabase](https://supabase.com) project and talks to it with plain `fetch`
+(`js/board.js`); until it is set up, the page shows an e-mail address instead.
+
+Setting it up (about 10 minutes):
+
+1. Create a free Supabase project.
+2. In **SQL Editor**, paste `supabase/board.sql`, change the e-mail address in `board_is_owner()` to the one you will
+   sign in with, and run it. It creates the two tables, the security rules (visitors can only read visible posts and
+   add new ones; only you can change, hide or delete) and a spam limit.
+3. In **Authentication → Users**, add yourself with that e-mail address (Add user → Send invitation), so you can sign in.
+4. In **Authentication → URL Configuration**, set the Site URL to `https://mechanicalnotebook.com` and add
+   `https://mechanicalnotebook.com/requests.html` and `http://localhost:5173/requests.html` to the redirect URLs.
+5. In **Project Settings → API**, copy the Project URL and the `anon` public key into `js/board-config.js`.
+
+To moderate, open the board and click "sign in to moderate" at the bottom. Supabase e-mails you a sign-in link; after
+that the page shows the moderation controls for your browser. The anon key is safe to publish: the rules in
+`board.sql` decide what it can do.

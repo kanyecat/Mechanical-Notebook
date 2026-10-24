@@ -10,6 +10,7 @@
      cross     cross lattice: slits with a fork at each end
      fillet    fillet lattice: closed cut-outs with round ends and a narrow waist
      diamond   closed diamonds
+     fabric    fabric (Greek key): S-shaped keys, two square spirals winding in opposite directions
      hive      beehive: closed hexagons
    P: W, H  hinge area size      L  cut length (link length for torsion)     g  bridge between cuts in a line
       d    row spacing (column pitch for torsion)      amp  step (wave)       fork  fork size (cross)
@@ -64,7 +65,7 @@
   }
 
   function make(P) {
-    const W = Math.max(1, P.W), H = Math.max(1, P.H), L = Math.max(0.5, P.L), g = Math.max(0, P.g), d = Math.max(0.2, P.d);
+    const W = Math.max(1, P.W), H = Math.max(1, P.H), L = Math.max(0.5, P.L), g = Math.max(0, P.g || 0), d = Math.max(0.2, P.d || 1);
     const open = P.open !== 0, e = P.e == null ? 0.5 : P.e, sw = Math.max(0.05, P.sw || 0.5), slot = P.cut === 'slot';
     const lo = open ? -e : g / 2, hi = open ? H + e : H - g / 2;
     const cuts = [], period = L + g; let grp = 0;   // grp: cuts that belong to one shape (an H, a forked slit) share a number
@@ -86,9 +87,19 @@
     // every row of a lattice: centres of the cuts in line k, shifted half a step on odd lines
     const eachCut = fn => lineXs().forEach((x, k) => { const c0 = H / 2 + (k % 2 ? period / 2 : 0); for (let m = -reach; m <= reach; m++) { const yc = c0 + m * period; if (yc + L / 2 + period / 2 < lo || yc - L / 2 - period / 2 > hi) continue; grp++; fn(x, yc, k); } });
     if (P.pat === 'straight') eachCut((x, yc) => addLine([[x, yc - L / 2], [x, yc + L / 2]]));
-    else if (P.pat === 'wave') {   // a straight slit with a smooth S-shaped step of size amp across the middle
-      const A = P.amp || 0, tr = Math.min(L * 0.3, Math.max(1.2, A * 1.6));
-      eachCut((x, yc) => { const pts = [[x - A / 2, yc - L / 2]]; for (let i = 0; i <= 10; i++) { const u = i / 10; pts.push([x - A / 2 + A * (1 - Math.cos(Math.PI * u)) / 2, yc - tr / 2 + tr * u]); } pts.push([x + A / 2, yc + L / 2]); addLine(pts); });
+    else if (P.pat === 'wave') {   // wave lattice: each cut steps sideways by amp (about one row) and back: ‾‾\__/‾‾
+      // The steps line up across all rows, so neighbouring cuts stay parallel; only the cut ends are staggered on odd rows.
+      const A = P.amp == null ? d : P.amp, fa = Math.max(0.18 * L, g + 1.5), st = Math.max(0.5, 0.14 * L), sh = (g + fa) / 2, ss = u => u * u * (3 - 2 * u);
+      const prof = t => { t = ((t % period) + period) % period; if (t > fa && t < fa + st) return ss((t - fa) / st); if (t >= fa + st && t <= L - fa - st) return 1; if (t > L - fa - st && t < L - fa) return ss((L - fa - t) / st); return 0; };
+      const base = H / 2 - L / 2;
+      lineXs().forEach((x, k) => {
+        for (let m = -reach; m <= reach; m++) {
+          const y0 = base + m * period + (k % 2) * sh; if (y0 > hi || y0 + L < lo) continue; grp++;
+          const pts = [], N = 48;
+          for (let i = 0; i <= N; i++) { const y = y0 + L * i / N; pts.push([x + A * prof(y - base), y]); }
+          addLine(pts);
+        }
+      });
     } else if (P.pat === 'cross') {   // a slit with a fork at each end: >—<
       const fw = Math.max(0, P.fork || 1), fl = Math.min(fw * 0.9, Math.max(0, g * 0.4));
       eachCut((x, yc) => { const y0 = yc - L / 2, y1 = yc + L / 2;
@@ -108,6 +119,23 @@
         if (slot) cuts.push({ pts: slotAround([[x, y0], [x, y1]], sw, k % 2 === 1, k % 2 === 0), closed: true });
         else cuts.push({ pts: [[x, y0], [x, y1]], closed: false });
       });
+    } else if (P.pat === 'fabric') {   // fabric (Greek key): square tiles, each cut as a double spiral, two arms winding in opposite directions
+      const c = Math.max(2, P.tile || 12), arm = Math.max(0.2, P.arm || 2), m = arm / 2, S = c - m;
+      const nx = Math.max(1, Math.floor(W / c + 1e-9)), x0 = (W - nx * c) / 2, ny = Math.max(1, Math.floor(H / c + 1e-9)), y0 = (H - ny * c) / 2;
+      // arm A starts in one corner and winds inwards along top, right, bottom, left; arm B is A turned half a turn about the
+      // tile centre, so the two arms interleave one arm-width apart and meet in the middle, where one cut joins them
+      const line = k => { const o = arm * Math.floor(k / 2), e = k % 4; return e === 0 ? ['y', S - o] : e === 1 ? ['x', S - o] : e === 2 ? ['y', m + o] : ['x', m + o]; };
+      const vx = (k1, k2) => { const p = line(k1), q = line(k2); return p[0] === 'x' ? [p[1], q[1]] : [q[1], p[1]]; };
+      const A = [[m, S]]; let k = 0;
+      while (k < 80) { const q = vx(k, k + 1), p = A[A.length - 1]; if (Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]) < 2 * arm) break; A.push(q); k++; }
+      // finish along the innermost along-x leg as far as the middle; one short cut straight across the centre then joins arm B
+      if (line(k)[0] === 'x') A.pop(); else k++;
+      A.push([c / 2, line(k - 1)[1]]);
+      const B = A.map(([u, v]) => [c - u, c - v]), key = A.concat(B.reverse());
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+        grp++; const X = x0 + i * c, Y = y0 + j * c, fl = (i + j) % 2;   // neighbouring tiles are mirror images
+        addLine(key.map(([u, v]) => [X + (fl ? c - u : u), Y + v]));
+      }
     } else if (P.pat === 'hive') {   // closed hexagons (flats top and bottom) in a honeycomb
       const af = Math.max(0.5, P.hs || 6), wall = Math.max(0.1, P.hw || 1.2), r = af / Math.sqrt(3), px = (af + wall) * Math.sqrt(3) / 2, py = af + wall;
       const nx = Math.max(1, Math.floor((W - 2 * r) / px) + 1), x0 = W / 2 - (nx - 1) * px / 2;
@@ -149,7 +177,7 @@
   const segs = c => { const o = [], n = c.pts.length; for (let i = 0; i + 1 < n + (c.closed ? 1 : 0); i++) o.push([c.pts[i], c.pts[(i + 1) % n]]); return o; };
   function web(P) {
     const per = (P.L || 1) + (P.g || 0), d = P.d || 1;
-    const Q = Object.assign({}, P, { cut: 'line', open: 0, W: P.pat === 'hive' ? 4 * ((P.hs || 6) + (P.hw || 1.2)) : P.pat === 'torsion' ? 3 * d : 4 * d, H: P.pat === 'hive' ? 3 * ((P.hs || 6) + (P.hw || 1.2)) : P.pat === 'meander' ? 3 * ((P.g || 1) + 6) : 2.5 * per });
+    const Q = Object.assign({}, P, { cut: 'line', open: 0, W: P.pat === 'fabric' ? 4 * (P.tile || 12) : P.pat === 'hive' ? 4 * ((P.hs || 6) + (P.hw || 1.2)) : P.pat === 'torsion' ? 3 * d : 4 * d, H: P.pat === 'fabric' ? 2 * (P.tile || 12) : P.pat === 'hive' ? 3 * ((P.hs || 6) + (P.hw || 1.2)) : P.pat === 'meander' ? 3 * ((P.g || 1) + 6) : 2.5 * per });
     if (P.pat === 'meander') return d;
     const cs = make(Q).cuts, S = cs.map(segs), bb = cs.map(c => { const xs = c.pts.map(q => q[0]), ys = c.pts.map(q => q[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; });
     let m = 1e9;
@@ -165,7 +193,8 @@
     const d = P.d || 1, L = P.L || 1, g = P.g || 0, W = P.W || 10, rows = Math.max(1, Math.floor(W / d + 1e-9));
     switch (P.pat) {
       case 'straight': return { len: Math.max(0, (L - g) / 2), w: d, n: rows };
-      case 'wave': return { len: Math.max(0, (L - g) / 2 + 1.5 * (P.amp || 0)), w: d - (P.amp || 0), n: rows };
+      case 'wave': return { len: Math.max(0, 0.36 * L), w: d, n: rows };
+      case 'fabric': { const c = P.tile || 12, a = P.arm || 2; return { len: 2 * (c - a), w: a, n: 2 * Math.max(1, Math.floor(W / c)) }; }
       case 'cross': return { len: Math.max(0, (L - g) / 2 + 1.2 * (P.fork || 0)), w: d - (P.fork || 0) * 0.5, n: rows };
       case 'fillet': return { len: Math.max(0, L / 2), w: d - ((P.dw || 2.4) + (P.neck || 1)) / 2, n: rows };
       case 'diamond': return { len: Math.max(0, L / 2), w: d - (P.dw || 2) / 2, n: rows };

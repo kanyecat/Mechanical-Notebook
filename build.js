@@ -47,10 +47,10 @@ const nav = (p, here) => `<a class="skip" href="#app">Skip to content</a>
 const foot = p => `<footer class="foot"><div class="footin">
   <div class="fcol fabout"><div class="fbrand">Mechanical <b>Notebook</b></div>
     <p>A free, open notebook of moving parts. Watch them move, change them, and work out the numbers.</p>
-    <p class="fsmall">Made by Joo Hee Kim · <a href="${p}about.html">About this site</a></p></div>
+    <p class="fsmall">Made by <a class="fname" href="https://www.jooheekim.art" target="_blank" rel="noopener">Joo Hee Kim</a> · <a href="${p}about.html">About this site</a></p></div>
   <div class="fcol"><h4>Explore</h4>
     <a href="${p}mechanisms.html">Mechanisms</a><a href="${p}elements.html">Mechanical elements</a><a href="${p}fabrication.html">Fabrication techniques</a><a href="${p}combine.html">Combine mechanisms</a>
-    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a><a href="${p}generators/chains.html">Chain generator</a><a href="${p}generators/hinges.html">Living hinge generator</a></div>
+    <a href="${p}generators/gears.html">Gear generator</a><a href="${p}generators/linkages.html">Linkage generator</a><a href="${p}generators/cams.html">Cam generator</a><a href="${p}generators/pulleys.html">Pulley generator</a><a href="${p}generators/chains.html">Chain generator</a><a href="${p}generators/hinges.html">Living hinge generator</a><a href="${p}requests.html">Requests and ideas</a></div>
   <div class="fcol"><h4>Project</h4>
     <a href="${REPO}" rel="noopener">Source code on GitHub</a><span>Free and open source (MIT licence)</span>
     <span>Inspired by <i>507 Mechanical Movements</i> by Henry T. Brown (1868)</span><span>Visits are counted with Google Analytics</span></div>
@@ -162,7 +162,12 @@ fs.writeFileSync(R('index.html'), head('Mechanical Notebook: how machines move, 
   </section>
 
   <section id="goals" class="sec">
-    <header class="sech"><span class="secn">02</span><div><h2>What do you want to do?</h2><p>Start from the motion you need. Each card suggests mechanisms to learn from and generators that open ready to design.</p></div></header>
+    <header class="sech"><span class="secn">02</span><div><h2>What do you want to do?</h2><p>Pick the motion you need to see mechanisms to learn from and generators that open ready to design.</p></div></header>
+    <div class="mpick" data-mpick>
+      <label class="mplab" for="mpsel">I want to</label>
+      <div class="mpwrap"><button type="button" class="mpbtn" id="mpsel" aria-haspopup="listbox" aria-expanded="false"><span class="gi" aria-hidden="true">?</span><span class="mpt">Choose a motion…</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <ul class="mplist" role="listbox" aria-label="Motions" hidden>${GOALS.map(g => `<li role="option" tabindex="-1" data-g="${g.id}"><span class="gi" aria-hidden="true">${g.icon}</span><span><b>${g.title}</b><small>${g.blurb}</small></span></li>`).join('')}</ul></div>
+    </div>
     <div class="goals">${GOALS.map(g => `
       <article class="goal" id="goal-${g.id}"><h3><span class="gi" aria-hidden="true">${g.icon}</span>${g.title}</h3><p>${g.blurb}</p>
         <ul>${g.picks.map(pk => `<li><a href="${pickUrl(pk)}"><span class="pk pk-${pk[0]}">${{ m: 'Mechanism', e: 'Element', g: 'Generator', c: 'Combine', f: 'Technique' }[pk[0]]}</span><span class="pn"><b>${pk[0] === 'g' ? (GENS[pk[1]][0]) : pk[0] === 'c' ? RECIPES.find(r => r.id === pk[1]).title : byslug[pk[1]].name}</b><small>${pk[2]}</small></span></a></li>`).join('')}</ul></article>`).join('')}
@@ -205,7 +210,9 @@ fs.writeFileSync(R('combine.html'), head('Combine mechanisms · Mechanical Noteb
   + tail('', engine('', mech, 'mechanisms') + '<script src="js/recipes.js"></script><script src="js/combine.js"></script><script>MN_COMBINE.mount(document.getElementById("app"), RECIPES)</script>'));
 
 /* ----- about page ----- */
-fs.writeFileSync(R('about.html'), head('About · Mechanical Notebook', '', 'Who made Mechanical Notebook, why, and who it is for.', 'about.html') + nav('', 'a') + `
+roomPage('requests.html', '', 'Community', 'Requests and ideas', 'Ask for a mechanism or a generator, point out a mistake, or share an idea. Posts are anonymous and public, anyone can comment, and each one is marked when it has been read, planned, fixed or resolved.',
+  '<div id="board" class="board"></div>', '<script src="js/board-config.js"></script><script src="js/board.js"></script>');
+fs.writeFileSync(R('about.html'), head('About · Mechanical Notebook', '', 'Why Mechanical Notebook was made, who it is for, and how it is made.', 'about.html') + nav('', 'a') + `
 <main class="sheet about" id="app">
   <header class="phead"><div class="kicker">About</div><h1 class="title">A notebook of moving parts</h1>
     <p class="lede">Mechanical Notebook is a free, open-source place to see how machines move, play with them, and learn the math behind them.</p></header>
@@ -221,16 +228,11 @@ fs.writeFileSync(R('about.html'), head('About · Mechanical Notebook', '', 'Who 
         <li><b>Makers, artists and designers</b> building kinetic sculptures, automata, robots and prototypes.</li>
         <li><b>Engineers</b> who want a quick, free tool to sketch a mechanism, check it and export it.</li>
       </ul></section>
-    <section class="box"><h3>Who made it</h3>
-      <p>This website was created by <b>Joo Hee Kim</b>. Joo Hee studied at Carnegie Mellon University, where she earned a Bachelor of Engineering Studies and Arts (BESA) in Mechanical Engineering and Art, with a minor in Physical Computing.</p>
-      <p>The site brings those two sides together: the precision of engineering and the clear, hands-on way an artist explains things.</p>
-      <p>Portfolio: <a href="https://www.jooheekim.art" target="_blank" rel="noopener">jooheekim.art</a></p>
-    </section>
     <section class="box"><h3>How it is made</h3>
       <p>Every drawing is calculated live in your browser with plain HTML, CSS and JavaScript. There are no accounts and nothing to install. The code is open source under the MIT licence, so you are free to learn from it, use it and improve it.</p>
       <p>The site is inspired by Henry T. Brown's <i>507 Mechanical Movements</i> (1868). All explanations and drawings here are original.</p></section>
   </div>
-  <section class="box comingbox"><h3>Coming next</h3><p>More mechanisms, more mechanical elements and more generators are on the way. Have an idea or found a mistake? Send Joo Hee an email at <a href="mailto:jooheeki@alumni.cmu.edu">jooheeki@alumni.cmu.edu</a>.</p></section>
+  <section class="box comingbox"><h3>Coming next</h3><p>More mechanisms, more mechanical elements and more generators are on the way. Have an idea, a request, or found a mistake? Post it on the <a href="requests.html">requests and ideas board</a>. Posts are public and anonymous, anyone can comment, and each one is marked when it has been read, planned, fixed or resolved.</p><p><a class="btn" href="requests.html">Open the requests board →</a></p></section>
 </main>` + foot('') + tail(''));
 
 console.log('built', mech.length, 'mechanisms,', elems.length, 'elements, index.html, about.html');
