@@ -6,7 +6,7 @@
    Privacy: Google's Consent Mode starts with analytics cookies OFF. Visits are still counted with cookieless pings.
    A small notice lets visitors allow cookies (better visitor counts) or decline. The choice is remembered. */
 (function () {
-  const GA_ID = 'G-XXXXXXXXXX';
+  const GA_ID = 'G-VHPRYRQHW8';
   if (!/^G-[A-Z0-9]{6,}$/.test(GA_ID) || GA_ID === 'G-XXXXXXXXXX') return;
   if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === 'file:') return;   // don't count your own testing
   const KEY = 'mn-consent';
