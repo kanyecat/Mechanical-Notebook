@@ -574,16 +574,6 @@
   /* =====================================================================================
      PAGE
      ===================================================================================== */
-  const SERVICES = {
-    laser: [['SendCutSend', 'https://sendcutsend.com', 'laser, waterjet and CNC routing from a DXF, plus bending and finishing'], ['OSH Cut', 'https://www.oshcut.com', 'laser cutting and bending of sheet metal, with instant prices'], ['Xometry', 'https://www.xometry.com', 'most processes, quoted from your file']],
-    waterjet: [['SendCutSend', 'https://sendcutsend.com', 'waterjet and laser from a DXF'], ['Xometry', 'https://www.xometry.com', 'waterjet, laser and machining']],
-    router: [['SendCutSend', 'https://sendcutsend.com', 'CNC routing of wood, plastics and composites'], ['Xometry', 'https://www.xometry.com', 'routing and machining']],
-    plasma: [['A local fabrication or welding shop', '', 'plasma tables are common in local metal shops; bring the DXF'], ['Xometry', 'https://www.xometry.com', 'sheet cutting of thick plate']],
-    punch: [['Protolabs', 'https://www.protolabs.com', 'sheet metal parts in batches'], ['Xometry', 'https://www.xometry.com', 'sheet metal in batches']],
-    stamp: [['Xometry', 'https://www.xometry.com', 'production stamping quotes'], ['A local metal stamping company', '', 'for thousands of parts it pays to talk to a shop directly']],
-    mill: [['Xometry', 'https://www.xometry.com', 'CNC machining with tolerances'], ['Protolabs', 'https://www.protolabs.com', 'fast CNC machining']],
-    print: [['Craftcloud', 'https://craftcloud3d.com', 'compares prices from many print services (needs an STL: extrude the DXF to the thickness first)'], ['Xometry', 'https://www.xometry.com', '3D printing in many plastics']]
-  };
   const $ = (r, q) => r.querySelector(q);
   MN.mount = function (app) {
     app.innerHTML = `
@@ -617,7 +607,7 @@
     <div class="dx-out" aria-live="polite"></div>
     <section class="box dx-about"><h3>How this works, and its limits</h3><ul class="rules">
       <li>The page joins the lines and arcs into outlines, works out which are holes, and measures inside corners, the narrowest bridges of material, the narrowest slots, every round hole, the cut length and the number of pierces.</li>
-      <li>Each process has rules of thumb taken from shop and online service design guides (minimum hole, bridge and slot sizes, the cutter radius left in inside corners, thickness limits, typical tolerances). The cost is a rough comparison from typical machine rates and cutting speeds, not a quote.</li>
+      <li>Each process has rules of thumb taken from shop and online service design guides (minimum hole, bridge and slot sizes, the cutter radius left in inside corners, thickness limits, typical tolerances). Costs are only compared between the options, using typical machine rates and cutting speeds; for a real price, ask a shop.</li>
       <li>It only sees the flat outline. It cannot know which faces must fit something, how the part is loaded, or features that are not in the drawing, such as threads, countersinks and pockets.</li>
       <li>The strength figure assumes the whole load is pulled through the part. Bending is usually far worse, so for anything that matters for safety, ask an engineer or run a proper stress analysis.</li>
       <li>Layers named BEND or FOLD are read as bend lines; layers named ENGRAVE, ETCH, MARK or SCORE as marking. Text is not cut: convert it to outlines first.</li></ul></section>`;
@@ -691,16 +681,15 @@
         return `<tr><td>Ø${d}</td><td>${n}</td><td>${cl ? 'Clearance for ' + cl[1] + ' screws: ' + (s.prec ? 'ask for +0.1/0' : 'the cut size is fine') : tp ? 'Tapping size for ' + tp[1] + ': cut ' + (d < s.t ? 'or drill it, then tap' : 'then tap') : d < s.t * 0.8 ? 'Smaller than the thickness: drill afterwards' : s.prec ? 'If a pin fits here: cut 0.2 under and ream to size' : 'General'}</td></tr>`; }).join('');
       const fixes = sel ? sel.issues.filter(i => i.at || i.id === 'tol').slice().sort((a, b) => (a.val == null ? 0 : a.val) - (b.val == null ? 0 : b.val)) : [];
       const grp = {}; fixes.forEach((x, i) => { (grp[x.id + x.sev] = grp[x.id + x.sev] || []).push(Object.assign({ n: S.marks.indexOf(x) + 1 }, x)); });
-      const band = c => c < 2 ? '$' : c < 8 ? '$$' : c < 30 ? '$$$' : '$$$$';
+      const cmin = Math.min(...R.ok.map(r => r.cost)), band = c => { const q = c / (cmin || 1); return q <= 1.3 ? 'Lowest cost' : q <= 2.5 ? 'Low cost' : q <= 6 ? 'Medium cost' : 'High cost'; };
       const LBL = ['Best fit', 'Good', 'Possible'];
       const procCard = (r, i) => `<button type="button" class="dx-proc${i === S.sel ? ' on' : ''}" data-sel="${i}" aria-pressed="${i === S.sel}">
           <span class="dx-rank">${r.fix ? 'Needs design changes' : LBL[Math.min(i, 2)]}</span><b>${r.pr.n}</b>
-          <span class="dx-cost"><i>${band(r.cost)}</i> about $${r.cost < 10 ? f1(r.cost, 2) : Math.round(r.cost)} each at ${s.qty}</span>
+          <span class="dx-cost"><i>${band(r.cost)}</i> for ${s.qty} part${s.qty > 1 ? 's' : ''}</span>
           <span class="dx-meta">±${f1(r.tol, 2)} mm · ${r.fix ? r.fix + ' must-fix · ' : ''}${r.warn} to check</span></button>`;
-      const svc = sel ? (SERVICES[sel.pr.id] || []).map(([n, u, d]) => `<li>${u ? `<a href="${u}" target="_blank" rel="noopener">${n}</a>` : `<b>${n}</b>`}: ${d}</li>`).join('') : '';
       out.innerHTML = `
       ${fileIss.length ? `<section class="box dx-file"><h3>The file itself</h3><ul class="dx-list">${fileIss.map(x => `<li class="dx-${x.sev}">${x.text}</li>`).join('')}</ul></section>` : ''}
-      <section class="sec dx-sec"><header class="sech"><span class="secn">01</span><div><h2>Ways to make it</h2><p>${m.n}, ${f1(s.t, 2)} mm thick, ${s.qty} part${s.qty > 1 ? 's' : ''}. Ranked by rough cost per part and how much of the drawing would need to change. Pick one to see its fixes.</p></div></header>
+      <section class="sec dx-sec"><header class="sech"><span class="secn">01</span><div><h2>Ways to make it</h2><p>${m.n}, ${f1(s.t, 2)} mm thick, ${s.qty} part${s.qty > 1 ? 's' : ''}. Ranked from easiest and cheapest to make; the cost labels compare these options with each other. Pick one to see its fixes.</p></div></header>
         <div class="dx-procs">${R.ok.map(procCard).join('') || '<p>No process suits this material at this thickness. Try another material or thickness.</p>'}</div>
         ${R.no.length ? `<details class="dx-no"><summary>Not suited (${R.no.length})</summary><ul>${R.no.map(r => `<li><b>${r.pr.n}</b>: ${esc(r.why)}</li>`).join('')}</ul></details>` : ''}
         ${sel ? `<p class="dx-pnote">${sel.pr.note} <a href="${sel.pr.page}">More about it →</a></p>` : ''}</section>
@@ -719,9 +708,7 @@
         <div class="dx-grid"><div class="box"><h3>General</h3><p class="dx-small">${sel ? `${sel.pr.n} holds about <b>±${f1(sel.tol, 2)} mm</b>. ` : ''}Note "general tolerance ISO 2768-m" on the drawing (about ±0.1 to ±0.3 mm for these sizes) and give tighter limits only on the features that fit other parts.${s.prec && sel && sel.tol > PREC[s.prec][1] * 1.2 ? ` For ${PREC[s.prec][0].toLowerCase()} fits, cut first and then machine or ream those features.` : ''}</p></div>
           <div class="box"><h3>Holes</h3>${holeRows ? `<div class="tablewrap"><table class="btable"><thead><tr><th>Size</th><th>How many</th><th>What it looks like, and what to ask for</th></tr></thead><tbody>${holeRows}</tbody></table></div>` : '<p class="dx-small">No round holes.</p>'}</div></div></section>
       <section class="sec dx-sec"><header class="sech"><span class="secn">05</span><div><h2>Finishing</h2><p>Secondary steps after cutting. Each one adds cost and time, so choose them for a reason.</p></div></header>
-        <ul class="dx-list">${finishes(m, s, sel && sel.pr).map(([n, d]) => `<li class="dx-ok"><b>${n}.</b> ${d}</li>`).join('')}</ul></section>
-      ${sel ? `<section class="sec dx-sec"><header class="sech"><span class="secn">06</span><div><h2>Get a real price</h2><p>Instant-quote services read the same DXF and give a real price and lead time. Mechanical Notebook has no ties to any of them; check each one's materials and thicknesses.</p></div></header>
-        <ul class="dx-svc">${svc}<li><b>A makerspace or local shop</b>: often the cheapest way to make one or two, and a chance to ask someone who cuts every day.</li></ul></section>` : ''}`;
+        <ul class="dx-list">${finishes(m, s, sel && sel.pr).map(([n, d]) => `<li class="dx-ok"><b>${n}.</b> ${d}</li>`).join('')}</ul></section>`;
     }
     // ------- preview -------
     const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -802,6 +789,6 @@
     let rw = 0; new ResizeObserver(() => { const w = cv.getBoundingClientRect().width; if (Math.abs(w - rw) > 1) { rw = w; S.view = null; draw(); } }).observe(cv);
     MN._state = S;   // for tests
   };
-  Object.assign(MN, { PROC, PREC, STOCK, GAUGE, SCREWS, TAPS, SERVICES, finishes, nearest, isMetal, stress, judge, f1, esc, segDist });
+  Object.assign(MN, { PROC, PREC, STOCK, GAUGE, SCREWS, TAPS, finishes, nearest, isMetal, stress, judge, f1, esc, segDist });
   MN.parse = parse; MN.collect = collect; MN.geometry = geometry; MN.rank = rank; MN.suggest = suggest; MN.MATS = MATS; MN.samples = { bracket: sampleBracket, gusset: sampleGusset };
 })();

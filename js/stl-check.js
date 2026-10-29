@@ -1,4 +1,4 @@
-/* STL manufacturability check (Design room tool). Needs js/dfm-check.js (materials, flat-part processes, finishing, quotes).
+/* STL manufacturability check (Design room tool). Needs js/dfm-check.js (materials, flat-part processes, finishing).
    Everything runs in the browser: the file is read with FileReader and never sent anywhere.
    1. read: binary or text STL -> triangles; join shared corners into one mesh; check it is closed and the right way out
    2. measure: size, volume, area, through holes (from the mesh topology), hole sizes (by slicing), wall thickness (rays),
@@ -518,17 +518,6 @@
   /* =====================================================================================
      PAGE
      ===================================================================================== */
-  const SVC = {
-    mill: [['Xometry', 'https://www.xometry.com', 'CNC machining, quoted from your STEP or STL'], ['Protolabs', 'https://www.protolabs.com', 'fast CNC machining']],
-    lathe: [['Xometry', 'https://www.xometry.com', 'CNC turning'], ['Protolabs', 'https://www.protolabs.com', 'CNC turning']],
-    fdm: [['Craftcloud', 'https://craftcloud3d.com', 'compares prices from many print services'], ['Xometry', 'https://www.xometry.com', 'FDM printing in many plastics']],
-    sla: [['Craftcloud', 'https://craftcloud3d.com', 'compares resin printing prices'], ['Protolabs', 'https://www.protolabs.com', 'SLA printing']],
-    sls: [['Craftcloud', 'https://craftcloud3d.com', 'compares SLS and MJF prices'], ['Protolabs', 'https://www.protolabs.com', 'SLS and MJF nylon'], ['Xometry', 'https://www.xometry.com', 'SLS and MJF nylon']],
-    dmls: [['Xometry', 'https://www.xometry.com', 'metal 3D printing'], ['Protolabs', 'https://www.protolabs.com', 'metal 3D printing']],
-    mould: [['Protolabs', 'https://www.protolabs.com', 'injection moulding with design feedback on the mould'], ['Xometry', 'https://www.xometry.com', 'injection moulding quotes']],
-    cast: [['Xometry', 'https://www.xometry.com', 'investment and sand casting quotes'], ['A local foundry', '', 'for castings it pays to talk to a foundry early']],
-    sheet: [['SendCutSend', 'https://sendcutsend.com', 'laser cutting and bending from a flat DXF'], ['OSH Cut', 'https://www.oshcut.com', 'sheet metal with bending, from a 3D file or DXF'], ['Protolabs', 'https://www.protolabs.com', 'sheet metal fabrication']]
-  };
   const $ = (r, q) => r.querySelector(q);
   const MODES = [['shape', 'Shape'], ['thick', 'Wall thickness'], ['over', 'Overhangs (printing)'], ['mould', 'Undercuts and draft (moulding)'], ['reach', 'Hard to reach (milling)']];
   MN.mount = function (app) {
@@ -565,7 +554,7 @@
       <li>An STL is the surface of the part as triangles. From them the page measures the size, volume and weight, counts the holes that go right through (from how the surface is connected), finds round holes by slicing the model, and measures the wall thickness by sending a line straight in from every face to the face behind it.</li>
       <li>It also checks which faces slope down too steeply to print without support (for each of the six ways the part could lie), which faces would lock in a two-part mould (for each of the three ways it could open), and which faces a milling cutter could reach from each side.</li>
       <li>It recognises flat parts (one even thickness, cut straight through), round parts (made on a lathe) and thin even walls (bent sheet metal), and checks flat parts with the same rules as Check a DXF.</li>
-      <li>An STL has no units, approximates curves with flat facets, and cannot show threads, tolerances or which faces must fit something. Costs are rough comparisons, not quotes; for anything that matters for safety, ask an engineer.</li></ul></section>`;
+      <li>An STL has no units, approximates curves with flat facets, and cannot show threads, tolerances or which faces must fit something. Costs are only compared between the options; for a real price ask a shop, and for anything that matters for safety, ask an engineer.</li></ul></section>`;
     const S = { A: null, sel: 0, mode: 'shape', view: { az: -40, el: 28, k: 1, px: 0, py: 0 } };
     const gl0 = $(app, '.st-gl'), ov = $(app, '.st-ov'), out = $(app, '.dx-out'), stats = $(app, '.dx-stats'), drop = $(app, '.dx-drop'), inp = $(app, 'input[type=file]'), busy = $(app, '.st-busy');
     const val = k => $(app, `[data-k="${k}"]`).value;
@@ -611,10 +600,10 @@
       const solids = M.shells.length - M.voids; if (solids > 1) F('ok', `${solids} separate bodies in one file. They are checked together.`);
       const kindText = K.flat && K.flat.pure ? `a <b>flat part</b>, ${f1(K.flat.t, 2)} mm thick (cut straight through along ${AX[K.flat.ax]}), so it can be cut from sheet or plate` : K.flat ? `a <b>stepped part</b> (every face square to ${AX[K.flat.ax]}, at ${K.flat.levels} heights): easy to mill from plate` : K.turned ? `a <b>round part</b> about ${AX[K.turned.ax]} (Ø${f1(K.turned.d)} × ${f1(K.turned.L)} mm): a lathe job` : K.shell ? `a <b>thin, even-walled part</b> (about ${f1(K.shell.t, 1)} mm): sheet metal or moulding` : 'a <b>free 3D shape</b>';
       stats.innerHTML = `<span><small>Size</small>${f1(B[0])} × ${f1(B[1])} × ${f1(B[2])} mm</span><span><small>Volume</small>${f1(M.vol / 1000, 2)} cm³</span><span><small>Weight</small>${f1(M.vol / 1000 * m.rho, 1)} g</span><span><small>Through holes</small>${M.holes == null ? '?' : M.holes}</span><span><small>Walls</small>${R.tMin ? f1(R.tMin, 2) + ' to ' + f1(R.tMax, 1) + ' mm' : '–'}</span><span><small>Triangles</small>${M.nf.toLocaleString()}</span>`;
-      const band = c => c < 2 ? '$' : c < 8 ? '$$' : c < 30 ? '$$$' : '$$$$';
+      const cmin = Math.min(...RK.ok.map(r => r.cost)), band = c => { const q = c / (cmin || 1); return q <= 1.3 ? 'Lowest cost' : q <= 2.5 ? 'Low cost' : q <= 6 ? 'Medium cost' : 'High cost'; };
       const LBL = ['Best fit', 'Good', 'Possible'];
       const card = (r, i) => `<button type="button" class="dx-proc${i === S.sel ? ' on' : ''}" data-sel="${i}" aria-pressed="${i === S.sel}"><span class="dx-rank">${r.fix ? 'Needs design changes' : LBL[Math.min(i, 2)]}</span><b>${r.pr.n}</b>
-        <span class="dx-cost"><i>${band(r.cost)}</i> about $${r.cost < 10 ? f1(r.cost, 2) : Math.round(r.cost).toLocaleString()} each at ${s.qty}</span><span class="dx-meta">±${f1(r.tol, 2)} mm · ${r.fix ? r.fix + ' must-fix · ' : ''}${r.warn} to check</span></button>`;
+        <span class="dx-cost"><i>${band(r.cost)}</i> for ${s.qty} part${s.qty > 1 ? 's' : ''}</span><span class="dx-meta">±${f1(r.tol, 2)} mm · ${r.fix ? r.fix + ' must-fix · ' : ''}${r.warn} to check</span></button>`;
       const fixes = sel ? sel.issues.slice().sort((a, b) => (a.sev === 'fix' ? 0 : 1) - (b.sev === 'fix' ? 0 : 1) || (a.val == null ? 0 : a.val) - (b.val == null ? 0 : b.val)) : [];
       const grp = {}; fixes.forEach(x => (grp[x.id + x.sev] = grp[x.id + x.sev] || []).push(Object.assign({ k: S.marks.indexOf(x) + 1 }, x)));
       // stock
@@ -629,17 +618,16 @@
         else if (pid === 'sla') stock = `<p><b>Resin</b>: ${s.load ? 'a tough or engineering resin' : 'standard resin'}</p><p class="dx-small">About ${f1(M.vol / 1000 * 1.2, 0)} ml a part, plus supports.</p>`;
         else if (pid === 'sls') stock = `<p><b>Nylon powder</b> (PA12 or PA11)</p><p class="dx-small">No supports, so the orientation hardly matters. The chosen plastic is replaced by nylon.</p>`;
         else if (pid === 'dmls') stock = `<p><b>Metal powder</b>: ${m.fam === 'al' ? 'AlSi10Mg aluminium' : m.fam === 'ti' ? 'Ti-6Al-4V titanium' : '316L stainless'}</p><p class="dx-small">Print with the ${DNAME[R.up.k]} side up to need the least support.</p>`;
-        else if (pid === 'mould') stock = `<p><b>Plastic pellets</b>: ${m.n}</p><p class="dx-small">The mould opens along ${AX[R.pull.ax]}. Mould cost about $${Math.round(sel.tooling / 100) * 100 + ''}, shared over the parts made.</p>`;
-        else if (pid === 'cast') stock = `<p><b>Casting alloy</b>: ${m.fam === 'al' ? 'A356 aluminium' : m.fam === 'brass' ? 'cast brass or bronze' : m.n}</p><p class="dx-small">The wax pattern die costs about $${Math.round(sel.tooling / 100) * 100}, shared over the parts made.</p>`;
+        else if (pid === 'mould') stock = `<p><b>Plastic pellets</b>: ${m.n}</p><p class="dx-small">The mould opens along ${AX[R.pull.ax]}. The mould is a large one-off cost, shared over all the parts made.</p>`;
+        else if (pid === 'cast') stock = `<p><b>Casting alloy</b>: ${m.fam === 'al' ? 'A356 aluminium' : m.fam === 'brass' ? 'cast brass or bronze' : m.n}</p><p class="dx-small">The wax pattern die is a one-off cost, shared over all the parts made.</p>`;
       }
       const hs = {}; R.holes.forEach(h => { const k = f1(h.d, 2) + '|' + h.ax; hs[k] = (hs[k] || 0) + 1; });
       const holeRows = Object.entries(hs).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([k, n]) => { const [ds, ax] = k.split('|'), d = +ds; const near = (L, tl) => { const x = L.slice().sort((a, b) => Math.abs(a[0] - d) - Math.abs(b[0] - d))[0]; return x && Math.abs(x[0] - d) <= tl ? x : null; }; let cl = near(D.SCREWS, 0.12), tp = near(D.TAPS, 0.08); if (cl && tp) { if (Math.abs(tp[0] - d) <= Math.abs(cl[0] - d)) cl = null; else tp = null; }
         return `<tr><td>Ø${d}</td><td>${n}</td><td>${AX[+ax]}</td><td>${cl ? 'Clearance for ' + cl[1] + ' screws' : tp ? 'Tapping size for ' + tp[1] + ': drill and tap after' : s.prec ? 'If a pin or bearing fits here: make it slightly small and ream to size' : 'General'}</td></tr>`; }).join('');
       const finList = (sel && FIN3[sel.pr.id] ? FIN3[sel.pr.id] : []).concat(sel && /^(fdm|sla|sls|mould)$/.test(sel.pr.id) ? [] : D.finishes(m, s, sel && sel.flat ? sel.pr : null));
-      const svc = sel ? (sel.flat ? (D.SERVICES[sel.pr.id] || []) : (SVC[sel.pr.id] || [])) : [];
       out.innerHTML = `
       <section class="box dx-file"><h3>The file itself</h3><p class="dx-small st-kind">This looks like ${kindText}.</p><ul class="dx-list">${fi.map(x => `<li class="dx-${x.sev}">${x.text}</li>`).join('')}</ul></section>
-      <section class="sec dx-sec"><header class="sech"><span class="secn">01</span><div><h2>Ways to make it</h2><p>${m.n}, ${s.qty} part${s.qty > 1 ? 's' : ''}. Ranked by rough cost per part and how much of the design would need to change. Pick one to see its fixes.</p></div></header>
+      <section class="sec dx-sec"><header class="sech"><span class="secn">01</span><div><h2>Ways to make it</h2><p>${m.n}, ${s.qty} part${s.qty > 1 ? 's' : ''}. Ranked from easiest and cheapest to make; the cost labels compare these options with each other. Pick one to see its fixes.</p></div></header>
         <div class="dx-procs">${RK.ok.map(card).join('') || '<p>No process suits this material. Try another material.</p>'}</div>
         ${RK.no.length ? `<details class="dx-no"><summary>Not suited (${RK.no.length})</summary><ul>${RK.no.map(r => `<li><b>${r.pr.n}</b>: ${esc(r.why)}</li>`).join('')}</ul></details>` : ''}
         ${sel ? `<p class="dx-pnote">${sel.pr.note} <a href="${sel.pr.page}">More about it →</a></p>` : ''}</section>
@@ -652,9 +640,7 @@
         <div class="dx-grid"><div class="box"><h3>General</h3><p class="dx-small">${sel ? `${sel.pr.n} holds about <b>±${f1(sel.tol, 2)} mm</b>. ` : ''}Put "general tolerance ISO 2768-m" on the drawing and give tighter limits only on the faces and holes that fit other parts. Send a STEP file and a drawing with those limits along with the STL: shops quote better from STEP.</p></div>
           <div class="box"><h3>Round holes found</h3>${holeRows ? `<div class="tablewrap"><table class="btable"><thead><tr><th>Size</th><th>How many</th><th>Along</th><th>What it looks like</th></tr></thead><tbody>${holeRows}</tbody></table></div>` : '<p class="dx-small">No round holes found.</p>'}</div></div></section>
       <section class="sec dx-sec"><header class="sech"><span class="secn">05</span><div><h2>Finishing</h2><p>Secondary steps after making it. Each one adds cost and time, so choose them for a reason.</p></div></header>
-        <ul class="dx-list">${finList.map(([n, d]) => `<li class="dx-ok"><b>${n}.</b> ${d}</li>`).join('')}</ul></section>
-      ${sel ? `<section class="sec dx-sec"><header class="sech"><span class="secn">06</span><div><h2>Get a real price</h2><p>Online services quote from the same file (most prefer STEP for machining). Mechanical Notebook has no ties to any of them.</p></div></header>
-        <ul class="dx-svc">${svc.map(([n, u, d]) => `<li>${u ? `<a href="${u}" target="_blank" rel="noopener">${n}</a>` : `<b>${n}</b>`}: ${d}</li>`).join('')}<li><b>A makerspace or local shop</b>: often the cheapest way to make one or two, and a chance to ask someone who makes parts every day.</li></ul></section>` : ''}`;
+        <ul class="dx-list">${finList.map(([n, d]) => `<li class="dx-ok"><b>${n}.</b> ${d}</li>`).join('')}</ul></section>`;
     }
 
     /* ------- 3D view (WebGL) ------- */
