@@ -229,14 +229,14 @@
       const order = { block: 0, warn: 1 };
       probs.sort((a, b) => order[a.sev] - order[b.sev]);
       warn.className = 'gwarn gw-' + level;
-      warn.innerHTML = probs.length ? `<p class="gwh">${level === 'block' ? '✕ This design won\'t work as it is' : '⚠ Check these before you make it'}</p>` + probs.map(r => `<div class="gp-${r.sev}"><b>${r.sev === 'block' ? '✕' : '⚠'} ${r[0]}</b> ${r[1]}</div>`).join('') : '<div class="ok">✓ No problems found</div>';
+      warn.innerHTML = probs.length ? `<p class="gwh">${level === 'block' ? '✕ Likely to fail as it is' : '⚠ Check these before you make it'}</p><p class="gwsub">You can still export it: cut or print a small test piece first and adjust from there.</p>` + probs.map(r => `<div class="gp-${r.sev}"><b>${r.sev === 'block' ? '✕' : '⚠'} ${r[0]}</b> ${r[1]}</div>`).join('') : '<div class="ok">✓ No problems found</div>';
       // the same news on the drawing and on the Export button
       stateBtn.hidden = false; stateBtn.className = 'gstate gs-' + level;
-      stateBtn.innerHTML = level === 'block' ? `<span class="gsi">✕</span><span><b>Won't work</b> · ${probs.find(p => p.sev === 'block')[0]}</span>` : level === 'warn' ? `<span class="gsi">⚠</span><span><b>${probs.length} thing${probs.length > 1 ? 's' : ''} to check</b> · ${probs[0][0]}</span>` : '<span class="gsi">✓</span><span><b>Ready to make</b></span>';
+      stateBtn.innerHTML = level === 'block' ? `<span class="gsi">✕</span><span><b>Likely to fail</b> · ${probs.find(p => p.sev === 'block')[0]}</span>` : level === 'warn' ? `<span class="gsi">⚠</span><span><b>${probs.length} thing${probs.length > 1 ? 's' : ''} to check</b> · ${probs[0][0]}</span>` : '<span class="gsi">✓</span><span><b>Ready to make</b></span>';
       expBtn.classList.toggle('gx-block', level === 'block'); expBtn.classList.toggle('gx-warn', level === 'warn');
-      expBtn.title = level === 'block' ? 'This design won\'t work as it is: see the problems first' : level === 'warn' ? 'Export (there are things to check first)' : 'Export';
+      expBtn.title = level === 'block' ? 'Export (likely to fail as it is: test a piece first)' : level === 'warn' ? 'Export (there are things to check first)' : 'Export';
       const eb = document.getElementById('gexpwarn');
-      if (eb) { eb.hidden = level === 'ok'; eb.className = 'gexpwarn gw-' + level; eb.innerHTML = level === 'ok' ? '' : `<b>${level === 'block' ? '✕ This design won\'t work as it is.' : '⚠ Some things need checking.'}</b> ${probs.slice(0, 3).map(p => p[0]).join(' · ')}`; }
+      if (eb) { eb.hidden = level === 'ok'; eb.className = 'gexpwarn gw-' + level; eb.innerHTML = level === 'ok' ? '' : `<b>${level === 'block' ? '✕ Likely to fail as it is.' : '⚠ Some things need checking.'}</b> ${probs.slice(0, 3).map(p => p[0]).join(' · ')}. You can still export: test a small piece first.`; }
       // highlight the settings each problem is about, with the problem written under the field
       app.querySelectorAll('.gside .gfld.gbad, .gside .gfld.gwarnf').forEach(r => { r.classList.remove('gbad', 'gwarnf'); const m = r.querySelector('.gfmsg'); if (m) m.remove(); });
       probs.forEach(p => G.problemKeys(def.id, p).forEach(key => {
@@ -587,7 +587,7 @@
       if (x === 'svg') G.download(base() + '.svg', G.toSVG(LP), 'image/svg+xml');
       if (x === 'dxf') G.download(base() + '.dxf', G.toDXF(LP), 'application/dxf');
       if (x === 'stl') G.download(base() + '.stl', G.toSTL(P), 'model/stl');
-      const ns = layout === 'nest' && G._nestStats ? `, nested ${Math.round(G._nestStats.w)} × ${Math.round(G._nestStats.h)} mm, ${Math.round(G._nestStats.use * 100)}% material use${G._nestStats.skipped ? ', ' + G._nestStats.skipped + ' part(s) did not fit' : ''}` : ''; toast(`${x.toUpperCase()} saved${LP._missed && LP._missed.length ? ' (no room to etch ' + LP._missed.join(', ') + ')' : ''}${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}${ns}`);
+      const ns = layout === 'nest' && G._nestStats ? `, nested ${Math.round(G._nestStats.w)} × ${Math.round(G._nestStats.h)} mm, ${Math.round(G._nestStats.use * 100)}% material use${G._nestStats.skipped ? ', ' + G._nestStats.skipped + ' part(s) did not fit' : ''}` : ''; toast(`${x.toUpperCase()} saved${LP._missed && LP._missed.length ? ' (no room to etch ' + LP._missed.join(', ') + ')' : ''}${x === 'stl' ? ` (${G._lastTriCount} triangles)` : ''}${ns}${level !== 'ok' ? ` · ${level === 'block' ? 'likely to fail as it is' : 'some things to check'}: test a piece first` : ''}`);
     };
     /* check my design */
     const chk = document.getElementById('gchk');
@@ -605,7 +605,7 @@
       cBed = res ? res.bed.slice() : cBed;
       const body = cd.querySelector('.gg-body'), top = body.scrollTop; body.innerHTML = html; body.scrollTop = top;
       const sum = cd.querySelector('.gc-sum'), go = cd.querySelector('[data-a="go"]');
-      if (res) { const ok = res.total - res.fails; sum.innerHTML = res.block ? `<span class="no blk">✕ This design won't work as it is: ${res.block} serious problem${res.block > 1 ? 's' : ''}${res.fails > res.block ? ` and ${res.fails - res.block} more to check` : ''}</span>` : res.fails ? `<span class="no">✗ ${res.fails} of ${res.total} checks need attention</span>` : `<span class="ok">✓ All ${res.total} checks passed</span>`; sum.dataset.state = res.block ? 'blk' : res.fails ? 'no' : 'ok'; }
+      if (res) { const ok = res.total - res.fails; sum.innerHTML = res.block ? `<span class="no blk">✕ Likely to fail as it is: ${res.block} serious problem${res.block > 1 ? 's' : ''}${res.fails > res.block ? ` and ${res.fails - res.block} more to check` : ''}</span>` : res.fails ? `<span class="no">✗ ${res.fails} of ${res.total} checks need attention</span>` : `<span class="ok">✓ All ${res.total} checks passed</span>`; sum.dataset.state = res.block ? 'blk' : res.fails ? 'no' : 'ok'; }
       go.hidden = !cFmt; if (cFmt) go.textContent = (res && res.fails ? 'Export ' + cFmt.toUpperCase() + ' anyway' : 'Export ' + cFmt.toUpperCase()); go.classList.toggle('primary', !(res && res.block)); go.classList.toggle('gdanger', !!(res && res.block));
       cd.querySelector('.gc-bl').textContent = cFmt === 'stl' ? 'Largest print bed:' : 'Sheet size:';
       cd.querySelectorAll('[data-bed]').forEach(i => { if (document.activeElement !== i && cBed) i.value = cBed[+i.dataset.bed]; });
@@ -615,7 +615,7 @@
     cd.addEventListener('input', e => { if (e.target.dataset.bed != null) { const v = [...cd.querySelectorAll('[data-bed]')].map(i => Math.max(10, +i.value || 10)); cBed = v; runCheck(); } });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cd.hidden) closeCheck(); });
     document.getElementById('gcheck').onclick = () => { menu.hidden = true; openCheck(null); };
-    menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { closePops(); if (chk.checked || level === 'block') openCheck(b.dataset.x); else doExport(b.dataset.x); });
+    menu.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { closePops(); if (chk.checked) openCheck(b.dataset.x); else doExport(b.dataset.x); });
     /* build guide dialog */
     const gd = document.createElement('div'); gd.className = 'gguide'; gd.hidden = true; gd.setAttribute('role', 'dialog'); gd.setAttribute('aria-modal', 'true'); gd.setAttribute('aria-label', 'Build guide');
     gd.innerHTML = '<div class="gg-box"><header><div><h2>Build guide</h2><p></p></div><div class="gg-acts"><button type="button" data-a="print">Print or save as PDF</button><button type="button" data-a="close">Close</button></div></header><div class="gg-body"></div></div>';
