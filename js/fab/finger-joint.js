@@ -3,7 +3,7 @@
   const ratio = p => (W / p.n) / p.t;   // finger width as a multiple of the sheet thickness
   const verdict = r => r < 1 ? ['TOO NARROW', 'fingers under 1× the thickness snap easily'] : r <= 3.2 ? ['GOOD', 'fingers 1 to 3 times the thickness'] : ['TOO WIDE', 'wide fingers give less locking, more glue area is lost'];
   MM.register({
-    slug: 'finger-joint', view: { w: 700, h: 440 }, thumb: 0.3,
+    slug: 'finger-joint', hands: false, view: { w: 700, h: 440 }, thumb: 0.3,
     params: [
       { key: 'n', label: 'Fingers across', min: 3, max: 15, step: 2, value: 7 },
       { key: 't', label: 'Sheet thickness', unit: ' mm', min: 3, max: 12, step: 0.5, value: 6 },

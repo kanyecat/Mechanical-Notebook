@@ -4,7 +4,10 @@
   const strain = p => 1.5 * p.h * p.y / (p.L * p.L) * 100;   // cantilever beam: eps = 1.5 h y / L^2 (percent)
   const allow = p => MAT[p.m][1] * (p.z ? 0.5 : 1);
   MM.register({
-    slug: 'snap-fit', view: { w: 700, h: 440 }, thumb: 0.45,
+    slug: 'snap-fit', clicks: a => MM.cycle(a) > 0.85 ? 1 : 0, clickSound: 'clack', view: { w: 700, h: 440 }, thumb: 0.45,
+    tryit: { pose: 0.0, keys: [{ key: 'L', label: 'Beam length', at: p => [350 - Math.min(8, 280 / p.L) * p.L, 330] }, { key: 'h', label: 'Thickness', at: p => [350 - Math.min(8, 280 / p.L) * p.L / 2, 200 + 12 * p.h] }, { key: 'y', label: 'Hook depth', at: p => [343, 200 - 12 * p.y] }], valid: p => strain(p) <= allow(p), why: 'Red: the beam bends past the safe strain for this material and may crack.', tasks: [
+        { text: 'Make the hook at least 3 mm deep and keep the beam under the strain limit.', now: p => 'hook ' + p.y.toFixed(1) + ' mm, strain ' + strain(p).toFixed(1) + '% of ' + allow(p) + '%', ok: p => p.y >= 3 && strain(p) <= allow(p) },
+        { text: 'Now make it as short as you can: under 14 mm long, hook at least 1 mm, still safe.', now: p => 'length ' + p.L.toFixed(1) + ' mm, strain ' + strain(p).toFixed(1) + '%', ok: p => p.L < 14 && p.y >= 1 && strain(p) <= allow(p) }] },
     params: [
       { key: 'L', label: 'Beam length', unit: ' mm', min: 8, max: 40, step: 1, value: 16 },
       { key: 'h', label: 'Beam thickness', unit: ' mm', min: 0.8, max: 4, step: 0.1, value: 1.5 },

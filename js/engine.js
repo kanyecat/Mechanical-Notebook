@@ -11,6 +11,10 @@
   const MM = { registry: {}, TAU, COL };
   // a see-through version of a palette colour, e.g. MM.tint('red', .4)
   MM.tint = (name, a) => { const h = COL[name].replace('#', ''); return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`; };
+  // number formatting for drawings and readouts (js/learn.js sets the same function on pages with a calculator)
+  MM.ipm = mm => MM.num(mm / 25.4, 1) + ' in/min';
+  MM.sfm = m => Math.round(m * 3.281) + ' SFM';
+  MM.num = (x, dp) => { if (x == null || !isFinite(x)) return '—'; if (dp == null) dp = Math.abs(x) >= 100 ? 0 : Math.abs(x) >= 10 ? 1 : 2; return Number(x).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp }); };
   MM.applyTheme = function () {
     const next = PALETTES[themeName()], rev = {}; Object.keys(COL).forEach(k => rev[COL[k]] = k);
     // graph lines were given palette colours when each mechanism loaded; move them to the new palette
@@ -19,6 +23,11 @@
   };
   if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('mn-theme', () => MM.applyTheme());
   MM.register = function (m) { MM.registry[m.slug] = m; };
+  /* handle paths for the Try it section (see hand.js) */
+  // a handle that runs round an arc, like a dial, for sizes the drawing does not show by a length (numbers of teeth on a fixed-size gear)
+  MM.dial = (cx, cy, r, deg0, deg1, key, lo, hi) => p => { const t = (deg0 + (deg1 - deg0) * (p[key] - lo) / (hi - lo)) * Math.PI / 180; return [cx + r * Math.cos(t), cy + r * Math.sin(t)]; };
+  // a straight gauge beside a part, for sizes the drawing shows too small to grab (thicknesses) or rescales to fit
+  MM.slide = (x0, y0, x1, y1, key, lo, hi) => p => { const f = Math.max(0, Math.min(1, (p[key] - lo) / (hi - lo))); return [x0 + f * (x1 - x0), y0 + f * (y1 - y0)]; };
   /* a 0..1..0 cycle for assembly animations: holds at both ends, eased in between. a is the animation angle (a full turn is one cycle) */
   MM.cycle = function (a, hold) {
     const h = hold == null ? 0.14 : hold, t = ((a / TAU) % 1 + 1) % 1; let u;
@@ -163,14 +172,25 @@
       const dpr = Math.min(window.devicePixelRatio || 1, 2), cw = canvas.clientWidth || 300, ch = canvas.clientHeight || 225;
       const pw = Math.round(cw * dpr), ph = Math.round(ch * dpr); if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
       s = Math.min(pw / v.w, ph / v.h) * 0.96; ox = (pw - v.w * s) / 2; oy = (ph - v.h * s) / 2;
-    } else { fit(canvas, v.w, v.h); s = canvas.width / v.w; }
+    } else if (m._crop) { const c = m._crop; fit(canvas, c.w, c.h); s = canvas.width / c.w; ox = -c.x * s; oy = -c.y * s; }   // a close-up (Try it)
+    else { fit(canvas, v.w, v.h); s = canvas.width / v.w; }
     const ctx = canvas.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(s, 0, 0, s, ox, oy);
     const g = new Gfx(ctx, v); g.state = m._state || (m._state = {});
     // on a phone the drawing is shrunk to fit, so labels are drawn bigger to stay readable (not on home-page thumbnails)
-    if (!canvas.hasAttribute('data-box')) { const cw = canvas.clientWidth || v.w; g.ts = Math.max(1, Math.min(1.45, 0.55 * v.w / cw)); }
-    m.draw(g, a, p);
+    if (!canvas.hasAttribute('data-box')) { const cw = canvas.clientWidth || v.w; g.ts = Math.max(1, Math.min(1.45, 0.55 * (m._crop ? m._crop.w : v.w) / cw)); }
+    m.draw(g, a, p); m._ts = g.ts;
+    // the part under the pointer (hand cursor) or being held
+    if (!canvas.hasAttribute('data-box') && MM.overlay) MM.overlay(ctx, m, a, p);   // the part under the pointer, the part being held, the 'drag to turn' arrow
+
+    // a part picked in the "Parts of the machine" list is outlined on top of the drawing
+    const hp = m._hl != null && m.parts && m.parts[m._hl];
+    if (hp && hp.box && !canvas.hasAttribute('data-box')) {
+      const b = typeof hp.box === 'function' ? hp.box(a, p) : hp.box;
+      if (b) { ctx.save(); ctx.setLineDash([7, 4]); ctx.lineWidth = 2.5; ctx.strokeStyle = COL.red; ctx.fillStyle = MM.tint('red', 0.12); ctx.beginPath(); ctx.roundRect(b[0], b[1], b[2], b[3], 8); ctx.fill(); ctx.stroke(); ctx.restore();
+        const lab = hp.n, ty = b[1] > 30 ? b[1] - 12 : b[1] + b[3] + 14; g.text(lab, Math.min(Math.max(b[0], 6), v.w - lab.length * 8 - 6), ty, { size: 12, weight: 800, color: COL.red }); }
+    }
   };
 
   /* ---------- graph ---------- */
@@ -228,11 +248,15 @@
     });
   };
   MM.fabCat = () => (window.MM_FAB || []).filter(c => MM.registry[c.slug]);
+  MM.machCat = () => (window.MM_MACH || []).filter(c => MM.registry[c.slug]);
+  // the Design room also lists a few pages that live in another room (from: 'machining'); their text comes from that room's catalog
+  MM.designCat = () => (window.MM_DESIGN || []).map(c => c.from ? Object.assign({}, (window.MM_MACH || []).find(x => x.slug === c.slug) || {}, c) : c).filter(c => MM.registry[c.slug]);
   MM.mount = function (slug) {
-    const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug), isFab = (window.MM_FAB || []).some(c => c.slug === slug);
-    const cat = isFab ? MM.fabCat() : isEl ? MM.elementsCat() : MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
-    const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length], pre = isFab ? 'F' : isEl ? 'E' : 'M';
+    const m = MM.registry[slug], isEl = (window.MM_ELEMENTS || []).some(c => c.slug === slug), isFab = (window.MM_FAB || []).some(c => c.slug === slug), isMach = (window.MM_MACH || []).some(c => c.slug === slug), isDes = (window.MM_DESIGN || []).some(c => c.slug === slug && !c.from);
+    const cat = isDes ? MM.designCat() : isMach ? MM.machCat() : isFab ? MM.fabCat() : isEl ? MM.elementsCat() : MM.cat(), idx = cat.findIndex(c => c.slug === slug), meta = cat[idx];
+    const prev = cat[(idx - 1 + cat.length) % cat.length], next = cat[(idx + 1) % cat.length], pre = isDes ? 'D' : isMach ? 'K' : isFab ? 'F' : isEl ? 'E' : 'M';
     document.title = meta.name + ' · Mechanical Notebook';
+    const lnk = c => c.from ? `../${c.from}/${c.slug}.html` : `${c.slug}.html`;   // a neighbour that lives in another room
     const params = m.params || []; const P = {}; params.forEach(q => P[q.key] = q.value);
     const fmt = (q, v) => (q.step < 1 ? (+v).toFixed(q.step < 0.1 ? 2 : 1) : String(v)) + (q.unit || '');
     const paramHTML = q => q.options
@@ -241,42 +265,54 @@
     const root = document.getElementById('app');
     const apps = Array.isArray(meta.app) ? meta.app : [meta.app || meta.used];
     root.innerHTML = `
-    <nav class="crumbs" aria-label="Breadcrumb"><a href="../${isFab ? 'fabrication' : isEl ? 'elements' : 'mechanisms'}.html">${isFab ? 'Fabrication' : isEl ? 'Elements' : 'Mechanisms'}</a><span>/</span><span>${meta.category}</span>
-      <span class="crnav"><a href="${prev.slug}.html" title="${prev.name}">← Prev</a><a href="${next.slug}.html" title="${next.name}">Next →</a></span></nav>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../${isDes ? 'design' : isMach ? 'machining' : isFab ? 'fabrication' : isEl ? 'elements' : 'mechanisms'}.html">${isDes ? 'Design' : isMach ? 'Machining' : isFab ? 'Fabrication' : isEl ? 'Elements' : 'Mechanisms'}</a><span>/</span><span>${meta.category}</span>
+      <span class="crnav"><a href="${lnk(prev)}" title="${prev.name}">← Prev</a><a href="${lnk(next)}" title="${next.name}">Next →</a></span></nav>
     <header class="phead">
-      <div class="kicker">${isFab ? 'Technique' : isEl ? 'Element' : 'No.'} ${meta.num}</div>
+      <div class="kicker">${isDes ? 'Design' : isMach ? (meta.category === 'Reference' ? 'Reference' : 'Machine') : isFab ? 'Technique' : isEl ? 'Element' : 'No.'} ${meta.num}</div>
       <h1 class="title">${meta.name}</h1>
       <p class="lede">${meta.fn}</p>
       ${isFab && meta.process ? `<div class="procs">${meta.process.map(x => `<span>${x}</span>`).join('')}</div>` : ''}
     </header>
+    ${isMach ? `<p class="safety-note"><b>Starting points, not rules.</b> Numbers here are typical values for learning and first tries. Always follow your machine's manual, the tool and material makers' data and your shop's safety training.</p>` : ''}
+    <nav class="onpage" aria-label="On this page"></nav>
     <div class="stage">
       <section class="box drawing">
-        <canvas id="main" aria-label="Animated drawing of the ${meta.name}"></canvas>
+        <canvas id="main" aria-label="Animated drawing of the ${meta.name}${m.hands === false ? '' : '. Drag a moving part to turn it by hand, or use the arrow keys.'}"></canvas>
+        ${m.hands === false ? '' : `<div class="handtip" role="status" hidden></div>
+        <p class="handhint"><b>Hands on:</b> drag the part marked with the arrow, or any moving part, to turn it by hand, and flick it to spin<span class="hh-mouse">. Drag sideways on empty space to step through the motion</span>.</p>`}
         <div class="controls">
           <button id="play" type="button">Pause</button>
           <button id="rev" type="button" class="ghost">Reverse</button>
           <label>Speed <input id="speed" type="range" min="0.1" max="3" step="0.05" value="1"><output id="speedv">1.0×</output></label>
           <label>Position <input id="scrub" type="range" min="0" max="360" step="1" value="0"><output id="angv">0°</output></label>
+
+          ${m.clicks ? '<button type="button" id="snd" class="ghost" aria-pressed="false">Sound off</button>' : ''}
         </div>
         ${params.length ? `<div class="adjust"><h3>Adjust the design</h3>${params.map(paramHTML).join('')}</div>` : ''}
       </section>
       <aside class="side">
         <div class="box now"><h3>Right now</h3><div id="ro">&nbsp;</div></div>
         <div class="box notes"><h3>How it works</h3><ol>${meta.notes.map(n => `<li>${n.replace(/^(Good to know|Try it):/, '<b>$1:</b>')}</li>`).join('')}</ol></div>
-        <div class="box used"><h3>${isFab ? 'Where it is used' : 'Application'}</h3><ul>${apps.map(x => `<li>${x}</li>`).join('')}</ul></div>
+        <div class="box used"><h3>${isDes ? 'Use it for' : isMach ? (meta.category === 'Reference' ? 'Use it for' : 'What it is good for') : isFab ? 'Where it is used' : 'Application'}</h3><ul>${apps.map(x => `<li>${x}</li>`).join('')}</ul></div>
         ${MAKE[slug] ? `<a class="box make" href="../generators/${MAKE[slug][0]}.html${MAKE[slug][1] ? '#' + encodeURIComponent(JSON.stringify(MAKE[slug][1])) : ''}"><h3>Make one</h3><p>Design your own in the ${{ gears: 'gear', linkages: 'linkage', cams: 'cam', pulleys: 'pulley', chains: 'chain and sprocket' }[MAKE[slug][0]]} generator and export SVG, DXF or STL →</p></a>` : ''}
       </aside>
     </div>
+    ${m.tryit ? `<section class="box xpanel tryit" id="tryit"><h3>Try it</h3><p class="xpintro">Drag the round handles to change the design. The dashed track under each handle shows how far that size can go${m.tryit.valid ? ', and it turns red where the design stops working' : ''}. Press <b>Run it</b> to watch your version move.</p>
+      <div class="trywrap"><canvas class="trycv" aria-label="Drawing of the ${meta.name} with handles for changing its sizes"></canvas><div class="handtip" role="status" hidden></div></div>
+      <div class="trybar"><button type="button" data-try="run">Run it</button><button type="button" class="ghost" data-try="reset">Reset sizes</button></div>
+      <div class="trytask" aria-live="polite"></div></section>` : ''}
+    ${m.parts ? `<section class="box xpanel partsbox" id="parts"><h3>${isMach ? 'Parts of the machine' : 'Parts'}</h3><p class="xpintro">Pick a part to outline it in the drawing and read what it is for and how it works. Parts marked ○ are not shown in the simplified drawing.</p><div class="seg partlist" role="group" aria-label="Parts">${m.parts.map((pt, i) => `<button type="button" data-part="${i}" aria-pressed="false">${pt.box ? '' : '○ '}${pt.n}</button>`).join('')}</div><div class="partinfo" aria-live="polite"></div></section>` : ''}
     ${(m.panels || []).map((pn, i) => `<section class="box xpanel" id="${pn.id || 'xp' + i}"><h3>${pn.title}</h3>${pn.intro ? `<p class="xpintro">${pn.intro}</p>` : ''}<div class="xpbody"></div></section>`).join('')}
     ${isFab && window.MM_TRICKS && MM_TRICKS[slug] ? MM.tricksHTML(MM_TRICKS[slug]) : ''}
-    ${m.graph ? `<section class="box graphbox"><h3>Motion graph</h3><canvas id="graph"></canvas><p class="hint">The marker follows the drawing. Drag the position slider to step through one cycle.</p></section>` : ''}
+    ${m.graph ? `<section class="box graphbox"><h3>Motion graph</h3><canvas id="graph"></canvas><p class="hint">The marker follows the drawing. Drag along the graph, or turn the drawing by hand, to step through one cycle.</p></section>` : ''}
     ${MM.math && MM.math[slug] ? '<section class="box mathbox"><h3>Do the math</h3><div id="learn"></div></section>' : ''}
     ${meta.fun ? `<section class="box fun"><h3>Fun fact</h3><p>${meta.fun}</p></section>` : ''}
+    ${meta.refs ? `<section class="box xpanel refs" id="refs"><h3>Sources and further reading</h3><ul class="rules">${meta.refs.map(x => `<li>${x}</li>`).join('')}</ul></section>` : ''}
     <div class="titleblock">
       <div><small>Category</small>${meta.category}</div><div><small>Sheet</small>${idx + 1} of ${cat.length}</div>
       <div class="brand">Mechanical&nbsp;<span>Notebook</span></div><div><small>Dwg no.</small><div class="dwg">${pre}-${meta.num}</div></div>
     </div>
-    <div class="pager"><a href="${prev.slug}.html">← ${prev.name}</a><a href="${next.slug}.html">${next.name} →</a></div>`;
+    <div class="pager"><a href="${lnk(prev)}">← ${prev.name}</a><a href="${lnk(next)}">${next.name} →</a></div>`;
     if (window.MNTheme) MNTheme.scan(root);
     if (window.MNGloss) ['.lede', '.notes', '.used', '.fun'].forEach(s => MNGloss.apply(root.querySelector(s)));
     // extra panels (a dimension table, a chart of types...): html(P) is redrawn when a design value changes, init(body) runs once
@@ -287,8 +323,23 @@
     });
     drawPanels(true);
     if (MM.tricksInit) MM.tricksInit(root);
+    const jump = [['.drawing', 'Drawing'], ['#tryit', 'Try it'], ['.notes', 'How it works'], ['#parts', 'Parts'], ...(m.panels || []).map((pn, i) => ['#' + (pn.id || 'xp' + i), pn.title]), ['#tricks', 'Ways to improve'], ['.graphbox', 'Motion graph'], ['.mathbox', 'Do the math'], ['.fun', 'Fun fact'], ['#refs', 'Sources']]
+      .filter(([sel]) => root.querySelector(sel));
+    const onp = root.querySelector('.onpage');
+    if (onp && jump.length > 3) { onp.innerHTML = '<span>On this page</span>' + jump.map(([sel, t], i) => `<a href="#" data-j="${i}">${t}</a>`).join(''); onp.querySelectorAll('a').forEach(el => el.onclick = e => { e.preventDefault(); const t = root.querySelector(jump[+el.dataset.j][0]); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }
+    else if (onp) onp.remove();
+    const pinfo = root.querySelector('.partinfo');
+    root.querySelectorAll('[data-part]').forEach(btn => btn.onclick = () => {
+      const i = +btn.dataset.part, same = m._hl === i; m._hl = same ? null : i;
+      root.querySelectorAll('[data-part]').forEach(b => { const on = !same && b === btn; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+      const pt = m.parts[i];
+      pinfo.innerHTML = same ? '' : `<h4>${pt.n}</h4><p><b>What it is for:</b> ${pt.what}</p><p><b>How it works:</b> ${pt.how}</p>${pt.box ? '' : '<p class="hint">Not shown in this simplified drawing.</p>'}`;
+      if (window.MNGloss && !same) MNGloss.apply(pinfo);
+      const cvr = document.getElementById('main').getBoundingClientRect(); if (!same && pt.box && (cvr.bottom < 60 || cvr.top > innerHeight - 60)) document.getElementById('main').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
     const cv = document.getElementById('main'), gc = document.getElementById('graph');
     let a = 0, playing = true, dir = 1, speed = 1, last = performance.now();
+    m._hl = null;
     const play = document.getElementById('play'), sp = document.getElementById('speed'), sc = document.getElementById('scrub'), ro = document.getElementById('ro');
     const spv = document.getElementById('speedv'), angv = document.getElementById('angv');
     const period = m.period || TAU;
@@ -297,7 +348,7 @@
     document.getElementById('rev').onclick = () => dir *= -1;
     sp.oninput = () => { speed = +sp.value; spv.textContent = speed.toFixed(1) + '×'; };
     sc.oninput = () => { a = +sc.value / 360 * period; setPlaying(false); };
-    let learn = null;
+    let learn = null, tryit = null;
     // set a design value from anywhere (slider, option buttons, calculator) and keep every control in step
     function setParam(key, v, from) {
       const q = params.find(x => x.key === key); if (!q) return;
@@ -306,6 +357,7 @@
       const seg = root.querySelector(`[data-seg="${key}"]`); if (seg) seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
       if (learn && from !== 'learn') learn.paramChanged(key, v);
       drawPanels(false);
+      if (hand) hand.refresh(); if (tryit) tryit.changed(key);
     }
     root.querySelectorAll('[data-k]').forEach(el => el.oninput = () => setParam(el.dataset.k, el.value));
     root.querySelectorAll('[data-seg]').forEach(seg => seg.onclick = e => { const b = e.target.closest('button'); if (b) setParam(seg.dataset.seg, b.dataset.v); });
@@ -323,9 +375,34 @@
       sc.value = deg; if (dt !== angv.textContent) angv.textContent = dt;
       if (learn) learn.tick(a);
     }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { a = (m.thumb != null ? m.thumb : 0.17) * period; setPlaying(false); }
+    // hands on: grab the drawing to turn it, flick it, or reshape it
+    const hand = MM.hand && m.hands !== false ? MM.hand(cv, { m, params, getA: () => a, setA: v => { a = v; }, getP: () => P, playing: () => playing, setPlaying, setParam: (k, v) => setParam(k, v), tip: root.querySelector('.handtip') }) : null;
+    root.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => {
+      root.querySelectorAll('[data-hm]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+      root.querySelectorAll('[data-hh]').forEach(x => x.hidden = x.dataset.hh !== b.dataset.hm);
+      if (hand) hand.setMode(b.dataset.hm);
+    });
+    const hh = root.querySelector('.handhint');
+    if (hh && !m._driver) hh.innerHTML = '<b>Hands on:</b> drag any moving part to move it by hand, and flick it to keep it going<span class="hh-mouse">. Drag sideways on empty space to step through the motion</span>.';
+    if (m.tryit && MM.tryit) tryit = MM.tryit(root.querySelector('#tryit'), m, { params, getP: () => P, setParam: (k, v) => setParam(k, v) });
+    const snd = document.getElementById('snd');
+    if (snd && MM.sound) { const show = () => { snd.textContent = MM.sound.on ? 'Sound on' : 'Sound off'; snd.setAttribute('aria-pressed', MM.sound.on); }; show(); snd.onclick = () => { MM.sound.on = !MM.sound.on; show(); if (MM.sound.on) MM.click(m.clickSound || 'tick'); }; }
+    // the graph: drag along it to move the drawing to that point of the cycle
+    if (gc && m.graph) {
+      let gd = false; const gper = m.graph.period || TAU, sh = m.graph.shift || 0;
+      const toA = e => { const r = gc.getBoundingClientRect(), narrow = r.width < 520, W = narrow ? 360 : 640, x0 = 44, x1 = narrow ? W - 10 : W - 120, gx = (e.clientX - r.left) / r.width * W;
+        const t = Math.max(0, Math.min(1, (gx - x0) / (x1 - x0))) * gper - sh, k = Math.round((a - t) / gper); a = t + k * gper; };
+      gc.style.cursor = 'ew-resize';
+      gc.addEventListener('pointerdown', e => { gd = true; setPlaying(false); toA(e); try { gc.setPointerCapture(e.pointerId); } catch (_) {} });
+      gc.addEventListener('pointermove', e => { if (gd) toA(e); });
+      ['pointerup', 'pointercancel'].forEach(t => gc.addEventListener(t, () => gd = false));
+    }
     function tick(now) {
       const dt = Math.min((now - last) / 1000, 0.05); last = now;
       if (playing) a += dir * speed * dt * (TAU / 5) * (period / TAU);
+      if (hand) hand.step(dt, a);
+      if (tryit) tryit.step(dt);
       render(); requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
@@ -337,9 +414,11 @@
     const ROOMS = {
       mechanisms: { cat: MM.cat(), dir: 'pages', pre: 'M', soon: ['More on the way', 'New mechanisms are added to the notebook over time.'] },
       elements: { cat: MM.elementsCat(), dir: 'elements', pre: 'E', soon: ['More on the way', 'Bushings, couplings, clutches, dowel pins and more are planned.'] },
-      fabrication: { cat: MM.fabCat(), dir: 'fabrication', pre: 'F', soon: ['More techniques on the way', 'Dowels, dovetails, bearings seats, bridging, tolerances and more are planned.'] }
+      design: { cat: MM.designCat(), dir: 'design', pre: 'D', soon: ['More on the way', 'Prototyping, material choice, FMEA and design for 3D printing and moulding are planned.'] },
+      machining: { cat: MM.machCat(), dir: 'machining', pre: 'K', soon: ['More on the way', 'Drill presses, saws, grinders, welding and finishing are planned.'] },
+      fabrication: { cat: MM.fabCat(), dir: 'fabrication', pre: 'F', soon: ['More techniques on the way', 'Bearing seats, steam bending, welding basics and more are planned.'] }
     };
-    const card = (c, R) => `<a class="card" data-c="${c.category}" data-p="${(c.process || []).join('|')}" href="${R.dir}/${c.slug}.html"><canvas data-s="${c.slug}" data-box aria-hidden="true"></canvas><div class="meta"><div class="num">${R.pre}-${c.num} · ${c.category}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div>${c.process ? `<div class="procs">${c.process.map(x => `<span>${x}</span>`).join('')}</div>` : ''}</div></a>`;
+    const card = (c, R) => `<a class="card" data-c="${c.category}" data-p="${(c.process || []).join('|')}" href="${c.from || R.dir}/${c.slug}.html"><canvas data-s="${c.slug}" data-box aria-hidden="true"></canvas><div class="meta"><div class="num">${R.pre}-${c.num} · ${c.category}</div><div class="name">${c.name}</div><div class="fn">${c.fn}</div>${c.process ? `<div class="procs">${c.process.map(x => `<span>${x}</span>`).join('')}</div>` : ''}</div></a>`;
     const soon = (t, s) => `<div class="card soon"><div class="meta"><div class="num">Coming soon</div><div class="name">${t}</div><div class="fn">${s}</div></div></div>`;
     document.querySelectorAll('[data-room]').forEach(grid => {
       const R = ROOMS[grid.dataset.room]; if (!R) return;

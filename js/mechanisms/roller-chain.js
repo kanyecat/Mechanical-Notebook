@@ -21,7 +21,12 @@
     const t = -psi - (s - S1) / r1; return [r1 * Math.cos(t), r1 * Math.sin(t)];
   }
   MM.register({
-    slug: 'roller-chain', view: { w: 700, h: 420 },
+    slug: 'roller-chain', clicks: (a, p) => Math.floor(a * p.n1 / TAU), view: { w: 700, h: 420 },
+    tryit: { keys: ['n1', 'n2'].map((key, i) => ({ key, label: i ? 'Driven teeth' : 'Driver teeth', at: p => {   // the top of each sprocket, through the same scaling as the drawing
+        const Ly = layout(p), m1 = 2 * Ly.r1 / p.n1, m2 = 2 * Ly.r2 / p.n2, left = -Ly.r1 - m1, right = Ly.D + Ly.r2 + m2, hh = Math.max(Ly.r1 + m1, Ly.r2 + m2), sc = Math.min(1, 650 / (right - left), 190 / hh), mid = (left + right) / 2;
+        return i ? [350 + sc * (Ly.D - mid), 210 - sc * (Ly.r2 + m2)] : [350 + sc * (0 - mid), 210 - sc * (Ly.r1 + m1)]; } })), pose: 0.05, tasks: [
+        { text: 'Make the driven sprocket turn 3 times slower than the driver.', now: p => (p.n2 / p.n1).toFixed(2) + ' : 1', ok: p => p.n2 === 3 * p.n1 },
+        { text: 'Gear it up like a bicycle: the back sprocket smaller than the front.', now: p => (p.n2 / p.n1).toFixed(2) + ' : 1', ok: p => p.n2 < p.n1 }] },
     params: [{ key: 'n1', label: 'Driver teeth', min: 9, max: 30, step: 1, value: 14 }, { key: 'n2', label: 'Driven teeth', min: 9, max: 40, step: 1, value: 28 }],
     draw(g, a, p) {
       const c = g.c, Ly = layout(p), m1 = 2 * Ly.r1 / p.n1, m2 = 2 * Ly.r2 / p.n2;

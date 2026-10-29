@@ -10,7 +10,7 @@
     return { phi, W, eps, omega, engaged: Math.abs(phi) < Math.PI / 4, turns };
   }
   MM.register({
-    slug: 'geneva-drive', view: { w: 700, h: 480 },
+    slug: 'geneva-drive', clicks: a => Math.floor((a + Math.PI) / TAU), clickSound: 'clack', view: { w: 700, h: 480 },
     draw(g, a) {
       const c = g.c, s = state(a);
       const slot0 = Math.PI + (s.W + Math.PI / 4);

@@ -1,7 +1,7 @@
 (function () {
   const { TAU, COL } = MM;
   MM.register({
-    slug: 'laser-kerf', view: { w: 700, h: 440 }, thumb: 0.5,
+    slug: 'laser-kerf', hands: false, view: { w: 700, h: 440 }, thumb: 0.5,
     params: [
       { key: 'k', label: 'Kerf (cut width)', unit: ' mm', min: 0.05, max: 0.5, step: 0.01, value: 0.2 },
       { key: 'part', label: 'Drawn part width', unit: ' mm', min: 20, max: 60, step: 1, value: 40 },

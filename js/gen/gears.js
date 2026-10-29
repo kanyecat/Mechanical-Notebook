@@ -319,6 +319,7 @@
   const crossed = S => !!X && (S.mode === 'bevel' || S.mode === 'worm');
 
   const DEF = {
+    knobs: S => S.train ? G.listKnobs(S, 'train', () => [['z', 'teeth', null, 6, 300]]) : [],
     id: 'gears', title: 'Gear generator', subtitle: 'Spur, helical, bevel and worm gears, ring gears and racks, as a pair or a whole train. Change any number and see every gear respond.',
     defaults: Object.assign({}, X ? X.defaults : {}, { mode: 'pair', train: JSON.stringify(TP.compound.T), z1: 12, z2: 30, type: 'ext', rackN: 16, m: 4, pa: 20, x1: 0, x2: 0, bl: 0.1, bore1: 6, bore2: 8, rim: 10, t1: 6, t2: 6, fine: 1, tooth: 'standard', rnd: 0, gdesign: 'solid', gpn: 5, gweb: 0, ghub: 0, grim: 0, gcrn: 0, gsweep: 35, ftype: 'spur', helix: 20, motor: 60, torque: 1, grid: 1, guides: 1, labels: 1, rpm: 6 }),
     panel(ui) {

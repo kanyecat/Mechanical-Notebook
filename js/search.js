@@ -3,7 +3,7 @@
 (function () {
   const D = window.MN_SEARCH; if (!D || !document.currentScript) return;
   const ROOT = new URL('..', document.currentScript.src).href;
-  const TYPE = { g: 'Generator', m: 'Mechanism', e: 'Element', c: 'Combine', f: 'Technique', t: 'Term' };
+  const TYPE = { g: 'Generator', m: 'Mechanism', e: 'Element', c: 'Combine', f: 'Technique', k: 'Machining', d: 'Design', t: 'Term' };
 
   /* ---------- matching ---------- */
   const stem = w => w.length > 4 && /ies$/.test(w) ? w.slice(0, -3) + 'y' : w.length > 3 && /(ss|us)$/.test(w) ? w : w.length > 3 && /s$/.test(w) ? w.slice(0, -1) : w;

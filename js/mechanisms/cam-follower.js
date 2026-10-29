@@ -26,6 +26,8 @@
   const phase = a => { const d = ((a / deg) % 360 + 360) % 360; return PH.find(q => d >= q[0] && d < q[1]); };
   MM.register({
     slug: 'cam-follower', view: { w: 700, h: 500 },
+    tryit: { keys: ['h'], pose: 0.45, tasks: [
+        { text: 'Give the follower a lift of exactly 40.', now: p => 'lift ' + p.h, ok: p => p.h === 40 }] },
     params: [{ key: 'h', label: 'Lift', min: 20, max: 70, step: 1, value: 60 }],
     draw(g, a, p) {
       const c = g.c, rot = -a, H = height(a, p.h), fy = CY - H;

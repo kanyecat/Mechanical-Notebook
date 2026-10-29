@@ -9,7 +9,7 @@
   const tau = (t, p) => { const k = key(p.d); return 2 * torque(t, p.d) * 1000 / (p.d * k.w * p.L); };   // key shear stress, MPa
   const ALLOW = 60;
   MM.register({
-    slug: 'shaft-key', view: { w: 700, h: 470 },
+    slug: 'shaft-key', hands: false, view: { w: 700, h: 470 },
     params: [
       { key: 'd', label: 'Shaft diameter', unit: ' mm', min: 12, max: 60, step: 1, value: 30 },
       { key: 'L', label: 'Key length', unit: ' mm', min: 10, max: 80, step: 1, value: 40 }

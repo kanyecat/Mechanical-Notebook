@@ -18,18 +18,19 @@
   document.addEventListener('touchcancel', () => { tap = null; }, { passive: true });
 
   const nav = document.querySelector('.nav'); if (!nav) return;
-  const menuB = nav.querySelector('.menub'), dd = nav.querySelector('.dd'), ddB = dd && dd.querySelector('.ddb');
-  const setMenu = open => { nav.classList.toggle('open', open); menuB.setAttribute('aria-expanded', open); menuB.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); };
-  const setDD = open => { if (!dd) return; dd.classList.toggle('open', open); ddB.setAttribute('aria-expanded', open); };
+  const menuB = nav.querySelector('.menub'), dds = [...nav.querySelectorAll('.dd')];
+  const setMenu = open => { nav.classList.toggle('open', open); document.body.classList.toggle('menuopen', open); if (!open) setDDall(false); menuB.setAttribute('aria-expanded', open); menuB.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); };
+  const setDD = (open, only) => dds.forEach(dd => { const v = open && dd === only; dd.classList.toggle('open', v); dd.querySelector('.ddb').setAttribute('aria-expanded', v); });
+  const setDDall = open => setDD(open, null);
   menuB.addEventListener('click', () => setMenu(!nav.classList.contains('open')));
-  if (ddB) ddB.addEventListener('click', e => { e.stopPropagation(); setDD(!dd.classList.contains('open')); });
-  document.addEventListener('click', e => { if (!e.target.closest('.dd')) setDD(false); if (!e.target.closest('.nav')) setMenu(false); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { setDD(false); setMenu(false); } });
-  nav.querySelectorAll('.links a').forEach(a => a.addEventListener('click', () => { setMenu(false); setDD(false); }));
+  dds.forEach(dd => dd.querySelector('.ddb').addEventListener('click', e => { e.stopPropagation(); setDD(!dd.classList.contains('open'), dd); }));
+  document.addEventListener('click', e => { if (!e.target.closest('.dd')) setDDall(false); if (!e.target.closest('.nav')) setMenu(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { setDDall(false); setMenu(false); } });
+  nav.querySelectorAll('.links a').forEach(a => a.addEventListener('click', () => { setMenu(false); setDDall(false); }));
   // light up the section of the home page you are looking at
   const secs = [...document.querySelectorAll('main section[id]')];
   if (secs.length && 'IntersectionObserver' in window) {
-    const links = [...nav.querySelectorAll('.links a[href*="#"], .links .ddb')];
+    const links = [...nav.querySelectorAll('.links a[href*="#"]'), nav.querySelector('.ddb[data-sec=generators]')].filter(Boolean);
     const io = new IntersectionObserver(es => es.forEach(en => {
       if (!en.isIntersecting) return; const id = en.target.id;
       links.forEach(l => l.classList.toggle('here', (l.getAttribute('href') || '').endsWith('#' + id) || (l.classList.contains('ddb') && id === 'generators')));
@@ -46,7 +47,7 @@
   const goals = document.querySelector('.goals'), cards = [...goals.querySelectorAll('.goal')];
   goals.classList.add('mpicked');
   const hint = document.createElement('p'); hint.className = 'mphint'; hint.textContent = 'Pick a motion above to see the mechanisms and generators for it.'; goals.before(hint);
-  const open = v => { lst.hidden = !v; btn.setAttribute('aria-expanded', v); if (v) (lst.querySelector('[aria-selected="true"]') || opts[0]).focus(); };
+  const open = v => { lst.hidden = !v; btn.setAttribute('aria-expanded', v); if (v) { (lst.querySelector('[aria-selected="true"]') || opts[0]).focus({ preventScroll: true }); const r = lst.getBoundingClientRect(); if (r.bottom > innerHeight) window.scrollBy({ top: Math.min(r.bottom - innerHeight + 12, r.top - 70) }); } };
   const pick = (id, focus) => {
     const o = opts.find(x => x.dataset.g === id); if (!o) return;
     opts.forEach(x => x.setAttribute('aria-selected', x === o)); btn.querySelector('.gi').textContent = o.querySelector('.gi').textContent; btn.querySelector('.mpt').textContent = o.querySelector('b').textContent;

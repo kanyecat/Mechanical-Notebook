@@ -2,7 +2,7 @@
   const { TAU, COL } = MM, PEG = 8;   // peg diameter, mm
   const verdict = p => 2 * p.o < PEG ? ['TOO SUBTLE', 'the wrong way is only ' + (2 * p.o) + ' mm out, which is less than a peg, so it can be forced'] : ['CLEAR', 'the wrong way misses a peg by ' + (2 * p.o) + ' mm, more than a whole peg'];
   MM.register({
-    slug: 'poka-yoke', view: { w: 700, h: 440 }, thumb: 0.95,
+    slug: 'poka-yoke', hands: false, view: { w: 700, h: 440 }, thumb: 0.95,
     params: [{ key: 'o', label: 'Odd peg off the centre line', unit: ' mm', min: 1, max: 30, step: 1, value: 14 }],
     draw(g, a, p) {
       const c = g.c, u = MM.cycle(a, 0.12), s = 2.2, cx = 350, cy = 205, pr = PEG * s / 2, rot = Math.PI * (1 - u), lift = Math.max(0, Math.min(1, (u - 0.75) / 0.25));

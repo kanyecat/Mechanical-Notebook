@@ -6,7 +6,11 @@
     return { n1, n2, m, r1, r2, D, c1x, c2x: c1x + D, cy };
   };
   MM.register({
-    slug: 'spur-gears', view: { w: 700, h: 420 },
+    slug: 'spur-gears', clicks: (a, p) => Math.floor(a * p.n1 / TAU), view: { w: 700, h: 420 },
+    tryit: { keys: [{ key: 'n1', label: 'Driver teeth', at: p => { const q = geo(p); return [q.c1x - q.r1 - q.m, q.cy]; } }, { key: 'n2', label: 'Driven teeth', at: p => { const q = geo(p); return [q.c2x + q.r2 + q.m, q.cy]; } }], pose: 0.05, tasks: [
+        { text: 'Make the driven gear turn 3 times slower than the driver.', now: p => (p.n2 / p.n1).toFixed(2) + ' : 1', ok: p => p.n2 === 3 * p.n1 },
+        { text: 'Make both gears turn at the same speed.', now: p => (p.n2 / p.n1).toFixed(2) + ' : 1', ok: p => p.n1 === p.n2 },
+        { text: 'Gear it up: make the driven gear turn faster than the driver.', now: p => (p.n2 / p.n1).toFixed(2) + ' : 1', ok: p => p.n2 < p.n1 }] },
     params: [{ key: 'n1', label: 'Driver teeth', min: 8, max: 30, step: 1, value: 12 }, { key: 'n2', label: 'Driven teeth', min: 8, max: 40, step: 1, value: 24 }],
     draw(g, a, p) {
       const q = geo(p), s1 = TAU / q.n1, s2 = TAU / q.n2;

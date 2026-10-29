@@ -3,6 +3,9 @@
   const pos = (a, k) => { const l = k * R; return R * Math.cos(a) + Math.sqrt(l * l - Math.pow(R * Math.sin(a), 2)); };
   MM.register({
     slug: 'slider-crank', view: { w: 700, h: 440 },
+    tryit: { keys: [{ key: 'rod', label: 'Rod ÷ crank', at: p => [CX + pos(0.12 * TAU, p.rod), CY] }], pose: 0.12, tasks: [
+        { text: 'Make the connecting rod exactly 4 times the crank.', now: p => 'rod ÷ crank ' + p.rod.toFixed(1), ok: p => Math.abs(p.rod - 4) < 0.05 },
+        { text: 'Make the shortest rod this page allows. Watch how lopsided the piston motion gets in the graph.', now: p => 'rod ÷ crank ' + p.rod.toFixed(1), ok: p => p.rod <= 2.05 }] },
     params: [{ key: 'rod', label: 'Rod / crank', min: 2, max: 5, step: 0.1, value: 3 }],
     draw(g, a, p) {
       const l = p.rod * R, x = pos(a, p.rod), px = CX + R * Math.cos(a), py = CY - R * Math.sin(a), sx = CX + x;

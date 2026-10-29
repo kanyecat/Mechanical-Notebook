@@ -2,7 +2,7 @@
   const { TAU, COL } = MM;
   const INS = { 3: [4.4, 5.7, 4.0], 4: [6.1, 8.1, 5.6], 5: [7.1, 9.5, 6.4] };   // outside diameter, length (standard Prusa insert), recommended hole diameter
   MM.register({
-    slug: 'heat-set-insert', view: { w: 700, h: 440 }, thumb: 0.35,
+    slug: 'heat-set-insert', hands: false, view: { w: 700, h: 440 }, thumb: 0.35,
     params: [{ key: 'd', label: 'Thread size', min: 3, max: 5, step: 1, value: 4, options: [[3, 'M3'], [4, 'M4'], [5, 'M5']] }],
     draw(g, a, p) {
       const u = MM.cycle(a), [od, L, hole] = INS[p.d], s = 14, cx = 270, yb = 385, depth = (L + 1.5) * s, bt = depth + 36, yt = yb - bt;

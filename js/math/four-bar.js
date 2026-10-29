@@ -1,9 +1,9 @@
 MM.addMath('four-bar', {
   inputs: [
-    { key: 'a', label: 'Crank', sym: 'a', unit: 'mm', value: 55, min: 1, max: 2000, step: 1 },
-    { key: 'b', label: 'Coupler', sym: 'b', unit: 'mm', value: 150, min: 1, max: 2000, step: 1 },
-    { key: 'c', label: 'Rocker', sym: 'c', unit: 'mm', value: 110, min: 1, max: 2000, step: 1 },
-    { key: 'd', label: 'Frame (fixed bar)', sym: 'd', unit: 'mm', value: 140, min: 1, max: 2000, step: 1 }
+    { key: 'a', param: 'A', label: 'Crank', sym: 'a', unit: 'mm', value: 55, min: 1, max: 2000, step: 1 },
+    { key: 'b', param: 'B', label: 'Coupler', sym: 'b', unit: 'mm', value: 150, min: 1, max: 2000, step: 1 },
+    { key: 'c', param: 'C', label: 'Rocker', sym: 'c', unit: 'mm', value: 110, min: 1, max: 2000, step: 1 },
+    { key: 'd', param: 'D', label: 'Frame (fixed bar)', sym: 'd', unit: 'mm', value: 140, min: 1, max: 2000, step: 1 }
   ],
   outputs(v) {
     const f = MM.num, L = [['crank', v.a], ['coupler', v.b], ['rocker', v.c], ['frame', v.d]], sorted = [...L].sort((x, y) => x[1] - y[1]);

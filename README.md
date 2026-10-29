@@ -12,8 +12,8 @@ Plain HTML, CSS and JavaScript. No dependencies, no build step needed to view.
 node serve.js        # or: yarn dev  →  http://localhost:5173
 ```
 
-`serve.js` runs `build.js` first, which writes `index.html`, `about.html`, the room pages (`mechanisms.html`, `elements.html`, `generators.html`, `fabrication.html`), `pages/<slug>.html` for every file in
-`js/mechanisms/`, `elements/<slug>.html` for every file in `js/elements/` and `fabrication/<slug>.html` for every file in `js/fab/`. The top menu and footer live in `build.js`.
+`serve.js` runs `build.js` first, which writes `index.html`, `about.html`, the room pages (`mechanisms.html`, `elements.html`, `generators.html`, `fabrication.html`, `machining.html`), `pages/<slug>.html` for every file in
+`js/mechanisms/`, `elements/<slug>.html` for every file in `js/elements/`, `fabrication/<slug>.html` for every file in `js/fab/` and `machining/<slug>.html` for every file in `js/mach/`. The top menu and footer live in `build.js`.
 
 ## What's inside
 
@@ -24,6 +24,10 @@ node serve.js        # or: yarn dev  →  http://localhost:5173
 | `js/fab/` | One file per fabrication technique (tab and slot, snap fit, kerf...), each with a drawing, sliders and a rules-of-thumb table |
 | `js/fab-tricks.js` | The "ways to make it better" cards (strengthening tab and slot, press-fit fixes for each shape, and so on) with their small drawings |
 | `js/fab-catalog.js` | Names, categories, processes, How it works, Application and Fun fact text for every technique |
+| `js/mach/` | One file per machining page (manual mill and lathe, CNC mill and router, laser, waterjet, plasma, and the reference pages: speeds and feeds, tolerances and fits, drawings and GD&T, measuring), each with a drawing, sliders and reference tables |
+| `js/mach-catalog.js` | Text for every machining page, and `MM_CUT`: the shared starting cutting speeds and feeds |
+| `js/design/` | One file per Design page (GD&T position, tolerance stack-up, design for manufacturing, design for assembly) |
+| `js/design-catalog.js` | Text for the Design room. Entries with `from: 'machining'` list a Machining page here too |
 | `js/math/` | The calculator, practice problems and challenges for each mechanism |
 | `js/catalog.js` | Names, How it works, Application and Fun fact text for every page |
 | `js/glossary.js` | Plain-language definitions shown when you hover an underlined term |
@@ -102,7 +106,7 @@ In each generator, the Export menu has **Check my design before exporting** (on 
 
 `combine.html` chains mechanisms: the output angle of one stage becomes the input angle of the next. `js/combine.js` has a table (`PASS`) of the mechanisms that hand rotation on (gears, belt, chain, worm, planetary, Geneva, Hooke's joint) and how to compute their output shaft angle, and a table of what to plot when a mechanism is the last stage. To make a new mechanism usable as a middle stage, add it to `PASS`. The ready-made examples are in `js/recipes.js`; they also appear on the home page, in search and in the goals. The chain is stored in the URL hash, so links can be shared.
 
-The home page is five room cards (Mechanisms, Elements, Generators, Combine, Fabrication). Each room has its own page with its own filters: Mechanisms, Elements and Fabrication filter by group, and Fabrication also filters by process (laser cutting, CNC, 3D printing). The room list is in `build.js` (`ROOMS`) and the filter bars are built by `MM.landing()` in `js/engine.js`.
+The home page is seven room cards (Mechanisms, Elements, Generators, Combine, Fabrication, Machining, Design). Each room has its own page with its own filters: Mechanisms, Elements and Fabrication filter by group, and Fabrication also filters by process (laser cutting, CNC, 3D printing). The room list is in `build.js` (`ROOMS`) and the filter bars are built by `MM.landing()` in `js/engine.js`.
 
 ## Add a fabrication technique
 
@@ -110,6 +114,18 @@ The home page is five room cards (Mechanisms, Elements, Generators, Combine, Fab
 2. Create `js/fab/<slug>.js` calling `MM.register({ slug, view, params, draw, readout, panels })`. `MM.cycle(a)` gives a 0 to 1 and back animation, and `g.dim(...)` draws dimension lines.
 3. Optionally add a list of "ways to make it better" cards for it in `js/fab-tricks.js` (title, text, the process `p` and material `m` it sits under, tag badges, and a small 3D drawing built with the helpers at the top of that file). They appear under the animation, grouped by process then material, with filter buttons. Cards with several designs have `slides: [{ t, x, g, gen }]` instead of `g` and show as a small slideshow (arrows, dots, swipe); `gen` is an optional link into a generator. The drawings render like a CAD view: hidden parts are fully hidden, `S.hole` / `S.slot` / `S.engrave` really cut into the parts drawn before them (walls and floor in darker gray, see-through holes dark), and shapes wrapped in `S.u(...)` are one body so no line is drawn where they touch. Colours: `p` stays in place (white), `a` is inserted (orange).
 4. Run `node build.js`. The page, room card, filter, search entry and footer link appear on their own.
+
+## Add a machining page
+
+1. Add an entry to `MM_MACH` in `js/mach-catalog.js` (slug, number, name, category, one-line function, notes, what it is good for, fun fact). Pages in the `Reference` category are labelled as reference pages.
+2. Create `js/mach/<slug>.js` calling `MM.register({ slug, view, params, draw, readout, panels })`, like a fabrication technique. Cutting data shared between pages is in `MM_CUT`.
+3. Optionally add `js/math/<slug>.js` for a Do the math calculator, then run `node build.js`.
+
+## Add a design page
+
+1. Add an entry to `MM_DESIGN` in `js/design-catalog.js` (slug, number, name, category, one-line function, notes, what to use it for, fun fact, sources). To list a page from another room as well, add `{ slug, from: 'machining', num, category }`: the card and the Prev / Next links go to its own page.
+2. Create `js/design/<slug>.js` calling `MM.register({ ... })` like any other page. A `tryit` block adds the Try it section: `keys` (each with an optional `at: p => [x, y]` handle position, or `MM.slide(...)` / `MM.dial(...)` for a gauge), `valid` (the track turns red where it is false), `why`, and `tasks` (`{ text, now: p => '...', ok: p => true/false }`). Check that no task is already done at the starting values.
+3. Run `node build.js`: it writes `design/<slug>.html` and the room page `design.html`.
 
 ## Add a mechanism or element
 

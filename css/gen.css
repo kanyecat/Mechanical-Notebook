@@ -287,3 +287,18 @@ html[data-theme="blueprint"]{--bad:#ff8a80;--badbg:rgba(255,138,128,.14);--warnb
 .gg-acts .gdanger{border:1px solid var(--bad);color:var(--bad);background:transparent}
 @media(max-width:860px){.gstate{top:40px;left:14px;right:auto;font-size:12px;max-width:calc(100% - 28px)}}
 .gc li.blk b{color:var(--bad)}
+/* short windows (landscape phones, small laptops with the browser zoomed): let the page scroll instead of squeezing the drawing to nothing */
+@media(min-width:861px) and (max-height:620px){
+  body.genpage{overflow:auto;height:auto}
+  .gapp{height:auto;min-height:100vh}
+  .gwork{grid-template-rows:max(440px,85vh) auto}
+  .gside{overflow:visible}
+}
+/* hands on */
+#gcv.grabbable{cursor:grab}#gcv.grabbing{cursor:grabbing}#gcv.reshaping.grabbable{cursor:move}
+.ghm{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin:0 2px}
+.ghm button{border-radius:0;min-width:0;padding:7px 9px}.ghm button.on{color:var(--red);background:var(--chrome2)}
+.ghtip{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);z-index:6;max-width:min(420px,calc(100% - 24px));background:var(--ink);color:var(--chrome);font-size:12px;line-height:1.4;padding:7px 11px;border-radius:7px;pointer-events:none;box-shadow:var(--shadow);text-align:center}
+.ghtip b{color:#ffb38a}
+@media(max-width:860px){.ghtip{bottom:96px}}
+.gstatic [data-hm="turn"]{display:none}.gstatic .ghm button{border-radius:6px}

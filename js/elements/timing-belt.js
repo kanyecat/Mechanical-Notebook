@@ -20,7 +20,12 @@
   }
   const NAMES = { 2: 'GT2 (2 mm)', 3: 'GT3 (3 mm)', 5: 'HTD 5M (5 mm)' };
   MM.register({
-    slug: 'timing-belt', view: { w: 700, h: 420 },
+    slug: 'timing-belt', clicks: (a, p) => Math.floor(a * (p.z1 || 10) / TAU), view: { w: 700, h: 420 },
+    tryit: { keys: ['z1', 'z2'].map((key, i) => ({ key, label: i ? 'Driven teeth' : 'Driver teeth', at: p => {   // the top of each pulley, through the same scaling as the drawing
+        const Ly = layout(p), th = p.pt * 0.32, left = -Ly.r1 - th - 2, right = Ly.D + Ly.r2 + th + 2, hh = Math.max(Ly.r1, Ly.r2) + th + 2, sc = Math.min(650 / (right - left), 165 / hh), mid = (left + right) / 2;
+        return i ? [350 + sc * (Ly.D - mid), 205 - sc * (Ly.r2 + th)] : [350 + sc * (0 - mid), 205 - sc * (Ly.r1 + th)]; } })), pose: 0.05, tasks: [
+        { text: 'Make the driven pulley turn 3 times slower than the driver.', now: p => (p.z2 / p.z1).toFixed(2) + ' : 1', ok: p => p.z2 === 3 * p.z1 },
+        { text: 'Gear it up 2 times: the driven pulley turns twice as fast.', now: p => (p.z2 / p.z1).toFixed(2) + ' : 1', ok: p => p.z1 === 2 * p.z2 }] },
     params: [
       { key: 'z1', label: 'Driver teeth', min: 12, max: 40, step: 1, value: 20 },
       { key: 'z2', label: 'Driven teeth', min: 12, max: 60, step: 1, value: 40 },

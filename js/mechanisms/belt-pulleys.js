@@ -32,6 +32,8 @@
   const ratio = p => (p.crossed ? -1 : 1) * R1 / p.r2;
   MM.register({
     slug: 'belt-pulleys', view: { w: 720, h: 460 },
+    tryit: { keys: [{ key: 'r2', label: 'Driven radius', at: p => [C2[0], C2[1] - p.r2] }], pose: 0.05, tasks: [
+        { text: 'Make the driven pulley turn at half the driver speed.', now: p => Math.abs(ratio(p)).toFixed(2) + '×', ok: p => Math.abs(Math.abs(ratio(p)) - 0.5) < 0.02 }] },
     params: [{ key: 'r2', label: 'Driven radius', min: 30, max: 125, step: 1, value: 50 }, { key: 'crossed', label: 'Belt', min: 0, max: 1, step: 1, value: 0, options: [[0, 'Open'], [1, 'Crossed']] }],
     draw(g, a, p) {
       const R2 = p.r2, cr = p.crossed | 0, lp = loop(R2, cr);

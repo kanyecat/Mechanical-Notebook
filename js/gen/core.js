@@ -30,6 +30,12 @@
   G.problemKeys = (id, r) => r[3] || (KEYMAP[id] || []).filter(([rx]) => rx.test(String(r[0]))).flatMap(x => x[1]);
   G.severity = r => r[2] === 'block' ? 'block' : BLOCK.some(rx => rx.test(String(r[0]))) ? 'block' : 'warn';
 
+  // Reshape knobs for designs kept as a JSON list in one field (pulleys, sprockets, gear trains): spec(item) gives
+  // [property, label, pair (x and y of one point move together), min, max] for each value that can be dragged
+  G.listKnobs = (S, field, spec) => { let L; try { L = JSON.parse(S[field]); } catch (e) { return []; } const out = [];
+    L.forEach((it, i) => spec(it).forEach(([f, label, pair, min, max]) => { const put = v => { const m = JSON.parse(S[field]); m[i][f] = v; S[field] = JSON.stringify(m); };
+      out.push({ label: (it.id ? it.id + ' ' : '') + label, unit: f === 'z' ? '' : 'mm', pair: pair ? pair + i : null, step: 1, min, max, get: () => JSON.parse(S[field])[i][f], raw: put, set: put }); }));
+    return out; };
   G.create = function (def) {
     const D = def.defaults, S = Object.assign({}, D), H = readHash();
     Object.keys(D).forEach(k => { if (H[k] !== undefined && typeof H[k] === typeof D[k]) S[k] = H[k]; });
@@ -90,6 +96,7 @@
           <div class="gtool" role="toolbar">
             <button id="gplay" title="Play / pause (Space)">❚❚</button>
             <button id="grev" title="Reverse direction">⇄</button>
+            <span class="ghm" role="group" aria-label="What dragging a part does"><button type="button" data-hm="turn" class="on" aria-pressed="true" title="Drag a moving part to turn it by hand (T)">Turn</button><button type="button" data-hm="reshape" aria-pressed="false" title="Drag a part to change its size (R)">Reshape</button></span>
             <label class="grpm" title="Animation speed">
               <input id="grpm" type="number" min="0" max="600" step="1"><span>rpm</span></label>
             <i></i>
@@ -103,7 +110,7 @@
           </div>
           <div class="ghelpbox" id="ghelpbox" role="dialog" aria-label="Keyboard shortcuts and controls" hidden><b>Keyboard</b>
             <dl><dt><kbd>Space</kbd></dt><dd>play / pause</dd><dt><kbd>F</kbd></dt><dd>fit to view</dd><dt><kbd>1</kbd></dt><dd>true size</dd><dt><kbd>G</kbd> <kbd>C</kbd> <kbd>L</kbd></dt><dd>grid, guides, labels</dd></dl>
-            <b>Mouse and touch</b><p>Scroll or pinch to zoom, drag to pan, double-click to fit.<br>Drag a field name left or right to change its value.</p></div>
+            <b>Mouse and touch</b><p>Drag a moving part to turn it by hand; flick it to spin. In Reshape, drag a part to change its size.<br>Drag the background to pan, scroll or pinch to zoom, double-click to fit.<br>Drag a field name left or right to change its value.</p></div>
           <div class="gstat"><span id="gxy">x — y —</span><span id="gscale"></span></div>
           <div class="gtoast" id="gtoast" role="status"></div>
         </div>
@@ -114,7 +121,7 @@
       </main>`;
 
     /* ---------- inspector controls ---------- */
-    const ctl = document.getElementById('gctl'), listeners = [];
+    const ctl = document.getElementById('gctl'), listeners = [], fields = [];   // fields: every number box, so Reshape can drive them
     let dirty = true;
     const changed = () => { writeHash(); listeners.forEach(f => f()); dirty = true; };
     const ui = {
@@ -144,6 +151,7 @@
           if (o.int) v = Math.round(v); S[key] = +v.toFixed(6); changed();
         };
         inp.oninput = () => { if (inp.value !== '') set(inp.value); };
+        fields.push({ key, label, row, step: o.step || 1, int: !!o.int, unit: o.unit || '', lims, set: v => { set(v); inp.value = S[key]; } });
         inp.onchange = () => { inp.value = S[key]; };
         let sc = null;   // drag the label to scrub the value
         lab.addEventListener('pointerdown', e => { sc = [e.clientX, S[key]]; lab.setPointerCapture(e.pointerId); e.preventDefault(); });
@@ -251,14 +259,159 @@
     new ResizeObserver(resize).observe(cv); resize();
     const fit = () => {
       // keep clear of the title (top), the toolbar (bottom) and room for dimension lines
-      const b = G.bounds(def.model(S, t).parts), w = cv.clientWidth, h = cv.clientHeight, mx = 60, top = w < 600 ? 60 : 120, bot = 130;
-      view.s = Math.min((w - 2 * mx) / Math.max(1, b.x1 - b.x0), (h - top - bot) / Math.max(1, b.y1 - b.y0));
+      const b = G.bounds(def.model(S, t).parts), w = cv.clientWidth, h = cv.clientHeight, mx = Math.min(60, w * 0.08), top = Math.min(w < 600 ? 60 : 120, h * 0.22), bot = Math.min(130, h * 0.25);
+      view.s = Math.min(400, Math.max(0.05, Math.min((w - 2 * mx) / Math.max(1, b.x1 - b.x0), (h - top - bot) / Math.max(1, b.y1 - b.y0)) || 1));
       view.x = (b.x0 + b.x1) / 2; view.y = (b.y0 + b.y1) / 2 - (bot - top) / 2 / view.s; dirty = true;
     };
     const toWorld = (px, py) => [view.x + (px - cv.clientWidth / 2) / view.s, view.y - (py - cv.clientHeight / 2) / view.s];
     cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(), [wx, wy] = toWorld(e.clientX - r.left, e.clientY - r.top); view.s = Math.min(400, Math.max(0.05, view.s * Math.exp(-e.deltaY * 0.0015))); const [nx, ny] = toWorld(e.clientX - r.left, e.clientY - r.top); view.x += wx - nx; view.y += wy - ny; dirty = true; }, { passive: false });
     let lastParts = []; const xy = document.getElementById('gxy');
     const inPoly = (pt, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+    /* ---------- hands on: grab a moving part to turn it, or (Reshape) drag a part to change the design ---------- */
+    const TAU = Math.PI * 2; let hmode = 'turn', gh = null, coast = 0, hovT = 0;
+    const segsOf = (SS, tt) => { let M; try { M = def.model(SS, tt); } catch (e) { return null; } const o = [];
+      M.parts.forEach(p => (p.shapes || []).forEach(sh => { [sh.outer].concat(sh.holes || []).forEach(r => { if (!r) return; for (let i = 0; i < r.length; i++) { const a = r[i], b = r[(i + 1) % r.length]; o.push(a[0], a[1], b[0], b[1]); } }); (sh.circles || []).forEach(c => o.push(c.x, c.y, c.x, c.y)); }));
+      M.parts.forEach(p => (p.cuts || []).forEach(c => { for (let i = 1; i < c.pts.length; i++) o.push(c.pts[i - 1][0], c.pts[i - 1][1], c.pts[i][0], c.pts[i][1]); }));
+      return o; };
+    const segNear = (s, i, x, y) => { const x1 = s[i], y1 = s[i + 1], dx = s[i + 2] - x1, dy = s[i + 3] - y1, L = dx * dx + dy * dy, u = L ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / L)) : 0; return [Math.hypot(x1 + u * dx - x, y1 + u * dy - y), u]; };
+    const segAt = (s, i, u) => s && s.length > i + 3 ? [s[i] + u * (s[i + 2] - s[i]), s[i + 1] + u * (s[i + 3] - s[i + 1])] : null;
+    // the same edge in another frame: same index if the outline has the same number of edges, otherwise the nearest similar edge
+    const segMatch = (s, ref) => { if (!s) return -1; const n = s.length / 4; if (n === ref.n) return ref.i;
+      const D = Math.abs(n - ref.n) + 6, i0 = Math.round(ref.i / 4 * n / ref.n), g0 = ref.seg, L0 = Math.hypot(g0[2] - g0[0], g0[3] - g0[1]), mx = (g0[0] + g0[2]) / 2, my = (g0[1] + g0[3]) / 2; let best = -1, bs = 1e9;
+      for (let j = Math.max(0, i0 - D); j <= Math.min(n - 1, i0 + D); j++) { const k = j * 4, sc = 2 * Math.abs(Math.hypot(s[k + 2] - s[k], s[k + 3] - s[k + 1]) - L0) + Math.hypot((s[k] + s[k + 2]) / 2 - mx, (s[k + 1] + s[k + 3]) / 2 - my); if (sc < bs) { bs = sc; best = k; } }
+      return best; };
+    const refOf = (s, i) => ({ i, n: s.length / 4, seg: s.slice(i, i + 4) });
+    function grab(wx, wy, r, any, light) {
+      const s0 = segsOf(S, t); if (!s0) return null;
+      const probes = (light ? [0.02, -0.02, 0.5, -0.5] : [0.02, -0.02, 0.5, -0.5, 1.5, -1.5]).map(h => [h, segsOf(S, t + h)]);
+      let best = null;
+      for (let i = 0; i < s0.length; i += 4) {
+        const [d, u] = segNear(s0, i, wx, wy); if (d > r || (best && d >= best.d)) continue;
+        const P = segAt(s0, i, u), ref = refOf(s0, i); let mv = 0;
+        probes.forEach(([h, s]) => { const k = segMatch(s, ref); if (k < 0) return; const A = segAt(s, k, u); if (A) mv = Math.max(mv, Math.hypot(A[0] - P[0], A[1] - P[1])); });
+        if (any || mv > 0.05 * r) best = { i, u, d, P, ref };
+      }
+      return best;
+    }
+    let found = null;
+    const gpos = (SS, tt) => { const s = segsOf(SS, tt), k = segMatch(s, gh.ref); if (k < 0) return null; found = refOf(s, k); return segAt(s, k, gh.u); };
+    const gcommit = (SS, tt) => { if (gpos(SS, tt) && found) gh.ref = found; };
+    function turnTo(q) {
+      let tt = t, P = gpos(S, tt); if (!P) return; let d0 = Math.hypot(P[0] - q[0], P[1] - q[1]); const h = 0.01;
+      for (let it = 0; it < 4 && d0 > 0.05 / view.s; it++) {
+        let vx = 0, vy = 0, vv = 0;
+        find: for (const hh of [h, 0.15, 0.6]) for (const sg of [1, -1]) { const P2 = gpos(S, tt + sg * hh); if (!P2) continue; const tx = (P2[0] - P[0]) / (sg * hh), ty = (P2[1] - P[1]) / (sg * hh); if (tx * tx + ty * ty < 1e-6) continue; vx = tx; vy = ty; vv = tx * tx + ty * ty; break find; }
+        if (vv < 1e-6) break;
+        let dt = Math.max(-0.4, Math.min(0.4, ((q[0] - P[0]) * vx + (q[1] - P[1]) * vy) / vv)), ok = false;
+        for (let k = 0; k < 4; k++) { const Pn = gpos(S, tt + dt), dn = Pn ? Math.hypot(Pn[0] - q[0], Pn[1] - q[1]) : 1e9; if (dn < d0) { tt += dt; P = Pn; d0 = dn; ok = true; break; } dt /= 2; }
+        if (!ok) break;
+      }
+      if (d0 * view.s > 14) { let bt = tt, bd = d0; for (let j = -12; j <= 12; j++) { if (!j) continue; const tj = tt + j * TAU / 24, Pj = gpos(S, tj), dj = Pj ? Math.hypot(Pj[0] - q[0], Pj[1] - q[1]) : 1e9; if (dj < bd) { bd = dj; bt = tj; } } if (bd < d0 - 3 / view.s) { tt = bt; P = gpos(S, tt) || P; } }
+      gcommit(S, tt); t = tt; gh.P = P; dirty = true;
+      const now = performance.now(); gh.hist.push([now, t]); while (gh.hist.length > 2 && now - gh.hist[0][0] > 120) gh.hist.shift();
+    }
+    // reshape: the design value (or pair of values, such as a pivot's x and y) that moves the grabbed point most
+    const knobs = () => fields.filter(f => f.row.isConnected && !f.row.closest('[hidden]')).map(f => ({ key: f.key, label: f.label, unit: f.unit, step: f.step, get: () => S[f.key], set: f.set, lims: f.lims }))
+      .concat(def.knobs ? def.knobs(S).map(k => Object.assign({ step: 1, unit: '', lims: () => [k.min, k.max] }, k, { set: v => { k.set(v); changed(); } })) : []);
+    const tryAt = (kn, v, fn) => { const keep = kn.get(); kn.raw ? kn.raw(v) : (S[kn.key] = v); try { return fn(); } finally { kn.raw ? kn.raw(keep) : (S[kn.key] = keep); } };
+    function startReshape() {
+      const base = gpos(S, t); if (!base) return null; const ks = knobs(), sens = [];
+      ks.forEach(kn => { const [lo, hi] = kn.lims(), v = kn.get(); if (!isFinite(v)) return; let dv = kn.step * Math.max(1, Math.round(((hi ?? v + 100 * kn.step) - (lo ?? v - 100 * kn.step)) / kn.step / 200)); if (hi != null && v + dv > hi) dv = -dv;
+        if (!kn.key && !kn.raw) return;
+        const P1 = tryAt(kn, v + dv, () => gpos(S, t)); if (!P1) return;
+        const jx = (P1[0] - base[0]) / dv, jy = (P1[1] - base[1]) / dv, span = (hi != null && lo != null ? hi - lo : 200 * kn.step);
+        sens.push({ kn, dv, jx, jy, s: Math.hypot(jx, jy) * span }); });
+      sens.sort((a, b) => b.s - a.s); if (!sens.length || sens[0].s * view.s < 8) return null;
+      const pick = [sens[0]], b0 = sens[0];
+      if (b0.kn.pair) { const mate = sens.find(x => x !== b0 && x.kn.pair === b0.kn.pair); if (mate) pick.push(mate); }
+      return pick;
+    }
+    function reshapeTo(q) {
+      const ks = gh.k; if (!ks) return;
+      for (let it = 0; it < 3; it++) {
+        const P = gpos(S, t); if (!P) break; const ex = q[0] - P[0], ey = q[1] - P[1];
+        const J = ks.map(k => { const v = k.kn.get(), P1 = tryAt(k.kn, v + k.dv, () => gpos(S, t)); return P1 ? [(P1[0] - P[0]) / k.dv, (P1[1] - P[1]) / k.dv] : [0, 0]; });
+        let d;
+        if (ks.length === 2) { const [a, b] = J, det = a[0] * b[1] - a[1] * b[0]; d = Math.abs(det) > 1e-9 ? [(ex * b[1] - ey * b[0]) / det, (a[0] * ey - a[1] * ex) / det] : [0, 0]; }
+        else { const j = J[0], jj = j[0] * j[0] + j[1] * j[1]; d = [jj > 1e-12 ? (ex * j[0] + ey * j[1]) / jj : 0]; }
+        // damped step: keep it only if the point really gets closer, else try half as far
+        const e0 = Math.hypot(ex, ey), cur = ks.map(k => k.kn.get()); let done = false;
+        for (let tries = 0; tries < 5 && !done; tries++) {
+          const vals = ks.map((k, i) => { const [lo, hi] = k.kn.lims(); let v = cur[i] + d[i]; if (lo != null) v = Math.max(lo, v); if (hi != null) v = Math.min(hi, v); return +(Math.round(v / k.kn.step) * k.kn.step).toFixed(6); });
+          const raw = (k, v) => k.kn.raw ? k.kn.raw(v) : (S[k.kn.key] = v);
+          ks.forEach((k, i) => raw(k, vals[i])); const Pn = gpos(S, t); ks.forEach((k, i) => raw(k, cur[i]));
+          if (Pn && Math.hypot(q[0] - Pn[0], q[1] - Pn[1]) < e0) { ks.forEach((k, i) => { if (vals[i] !== cur[i]) k.kn.set(vals[i]); }); done = true; }
+          else d = d.map(x => x / 2);
+        }
+        if (!done) break;
+      }
+      const P = gpos(S, t); gcommit(S, t); gh.P = P || q; dirty = true;
+      htip(ks.map(k => `<b>${k.kn.label}</b> ${+(+k.kn.get()).toFixed(3)}${k.kn.unit ? ' ' + k.kn.unit : ''}`).join(' · '));
+    }
+    const tipEl = document.createElement('div'); tipEl.className = 'ghtip'; tipEl.hidden = true; tipEl.setAttribute('role', 'status'); cv.parentElement.appendChild(tipEl);
+    function htip(html, ms) { if (!html) { tipEl.hidden = true; return; } tipEl.innerHTML = html; tipEl.hidden = false; clearTimeout(htip._t); if (ms) htip._t = setTimeout(() => tipEl.hidden = true, ms); }
+    /* Reshape handles: every size that visibly changes the drawing gets a round handle on the part it moves, with a dashed track for
+       its range (an open end means it can go further: let go and the track grows from the new value). Pivots get a four-way handle. */
+    let HD = [], hdT = 0, hdrag = null, hhov = null, wasPlaying = false;
+    // the four outermost points of each part (left, right, bottom, top): always on the outline, so a handle sits on the part itself
+    const feats = M => M.parts.map(p => { const e = [null, null, null, null]; (p.shapes || []).forEach(sh => (sh.outer || []).forEach(q => { if (!e[0] || q[0] < e[0][0]) e[0] = q; if (!e[1] || q[0] > e[1][0]) e[1] = q; if (!e[2] || q[1] < e[2][1]) e[2] = q; if (!e[3] || q[1] > e[3][1]) e[3] = q; })); return e[0] ? e : null; });
+    const modelWith = (kn, v) => tryAt(kn, v, () => { try { return def.model(S, t); } catch (e) { return null; } });
+    function buildHandles() {
+      HD = []; if (hmode !== 'reshape') { dirty = true; return; }
+      const t0 = performance.now(), cand = [], pairs = {};
+      knobs().forEach(kn => {
+        if (performance.now() - t0 > 700) return;
+        if (kn.pair) { (pairs[kn.pair] = pairs[kn.pair] || []).push(kn); return; }
+        const [lo, hi] = kn.lims(), v = kn.get(); if (!isFinite(v)) return;
+        const W = Math.max(Math.abs(v) * 0.6, 10 * kn.step), a = lo != null ? Math.max(lo, v - W) : v - W, b = hi != null ? Math.min(hi, v + W) : v + W; if (b - a < kn.step) return;
+        const Ma = modelWith(kn, a), Mb = modelWith(kn, b); if (!Ma || !Mb || Ma.parts.length !== Mb.parts.length) return;
+        const Fa = feats(Ma), Fb = feats(Mb); let best = null;
+        Fa.forEach((fa, i) => { const fb = Fb[i]; if (!fa || !fb) return; fa.forEach((q, j) => { const d = Math.hypot(fb[j][0] - q[0], fb[j][1] - q[1]); if (!best || d > best.d) best = { i, j, d }; }); });
+        if (!best || best.d * view.s < 18) return;
+        cand.push({ kn, a, b, best, endA: lo != null && a <= lo, endB: hi != null && b >= hi });
+      });
+      cand.sort((x, y) => y.best.d - x.best.d);
+      cand.forEach(c => {
+        if (performance.now() - t0 > 900) return;
+        const n = 9, vals = [], pts = [];
+        for (let i = 0; i < n; i++) { let x = c.a + (c.b - c.a) * i / (n - 1); x = Math.round(x / c.kn.step) * c.kn.step; vals.push(x); const M = modelWith(c.kn, x), F = M && feats(M)[c.best.i]; pts.push(F ? F[c.best.j] : null); }
+        const cur = posOnTrack({ vals, pts }, c.kn.get()); if (!cur) return;
+        if (HD.some(h => !h.pair && Math.hypot(h.cur[0] - cur[0], h.cur[1] - cur[1]) * view.s < 16)) return;   // two sizes moving the same corner: keep the stronger one
+        HD.push({ kn: c.kn, vals, pts, cur, endA: c.endA, endB: c.endB });
+      });
+      Object.values(pairs).forEach(ks => { if (ks.length !== 2) return; const kx = ks.find(k => / x$/.test(k.label)) || ks[0], ky = ks.find(k => k !== kx); HD.push({ pair: true, kx, ky, kn: kx, cur: [kx.get(), ky.get()] }); });
+      dirty = true;
+    }
+    function posOnTrack(h, x) { const vs = h.vals; let i = 0; while (i < vs.length - 2 && x > vs[i + 1]) i++; const f = vs[i + 1] === vs[i] ? 0 : Math.max(0, Math.min(1, (x - vs[i]) / (vs[i + 1] - vs[i]))), A = h.pts[i], B = h.pts[i + 1]; return A && B ? [A[0] + f * (B[0] - A[0]), A[1] + f * (B[1] - A[1])] : A || B; }
+    const rebuildSoon = ms => { clearTimeout(hdT); hdT = setTimeout(buildHandles, ms || 200); };
+    listeners.push(() => { if (hmode === 'reshape' && !hdrag) rebuildSoon(); });
+    function drawHandles() {
+      if (hmode !== 'reshape') return; const u = 1 / view.s, red = css('--red'), ink = css('--ink');
+      HD.forEach(h => {
+        if (hdrag && hdrag.h !== h) return; const on = (hdrag && hdrag.h === h) || hhov === h;
+        if (h.pair) { const [x, y] = h.pair ? [h.kx.get(), h.ky.get()] : h.cur; ctx.save(); ctx.strokeStyle = red; ctx.fillStyle = red; ctx.lineWidth = 2 * u; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const a = 13 * u, b = 21 * u; ctx.beginPath(); ctx.moveTo(x + dx * a, y + dy * a); ctx.lineTo(x + dx * b, y + dy * b); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + dx * (b + 5 * u), y + dy * (b + 5 * u)); ctx.lineTo(x + dx * b - dy * 4 * u, y + dy * b + dx * 4 * u); ctx.lineTo(x + dx * b + dy * 4 * u, y + dy * b - dx * 4 * u); ctx.fill(); });
+          ctx.fillStyle = css('--canvas'); ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.arc(x, y, (on ? 11 : 9) * u, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = red; ctx.beginPath(); ctx.arc(x, y, 3.5 * u, 0, TAU); ctx.fill(); ctx.restore(); return; }
+        ctx.save(); ctx.setLineDash([6 * u, 4 * u]); ctx.lineWidth = (on ? 3 : 2.2) * u; ctx.strokeStyle = on ? red : ink; ctx.globalAlpha = on ? 1 : 0.55; ctx.beginPath(); let st = false;
+        h.pts.forEach(q => { if (!q) { st = false; return; } st ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); st = true; }); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        [[0, 1, h.endA], [h.pts.length - 1, h.pts.length - 2, h.endB]].forEach(([e, f, stop]) => { const A = h.pts[e], B = h.pts[f]; if (!A || !B || !stop) return; const L = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1, nx = -(B[1] - A[1]) / L * 8 * u, ny = (B[0] - A[0]) / L * 8 * u; ctx.lineWidth = 2.5 * u; ctx.strokeStyle = ink; ctx.beginPath(); ctx.moveTo(A[0] - nx, A[1] - ny); ctx.lineTo(A[0] + nx, A[1] + ny); ctx.stroke(); });
+        const p = posOnTrack(h, h.kn.get()) || h.cur; ctx.fillStyle = css('--canvas'); ctx.strokeStyle = red; ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.arc(p[0], p[1], (on ? 11 : 9) * u, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = red; ctx.beginPath(); ctx.arc(p[0], p[1], 3.5 * u, 0, TAU); ctx.fill(); ctx.restore();
+      });
+    }
+    const hpos = h => h.pair ? [h.kx.get(), h.ky.get()] : (posOnTrack(h, h.kn.get()) || h.cur);
+    const hitHandle = (wx, wy, rpx) => { let best = null, bd = rpx / view.s; HD.forEach(h => { const p = hpos(h), d = Math.hypot(p[0] - wx, p[1] - wy); if (d < bd) { bd = d; best = h; } }); return best; };
+    const htxt = h => { const kn = h.kn; if (h.pair) return `<b>${kn.label.replace(/ x$/, '')}</b> drag anywhere: x ${+h.kx.get().toFixed(1)}, y ${+h.ky.get().toFixed(1)}`; const [lo, hi] = kn.lims(); return `<b>${kn.label}</b> ${+(+kn.get()).toFixed(3)}${kn.unit ? ' ' + kn.unit : ''}` + (lo != null || hi != null ? ` <span>(${lo != null ? lo : '…'} to ${hi != null ? hi : '…'})</span>` : '') + '<br><span>Drag along the dashed track.</span>'; };
+    function dragHandle(wx, wy) {
+      const h = hdrag.h;
+      if (h.pair) { h.kx.set(Math.round(wx / h.kx.step) * h.kx.step); h.ky.set(Math.round(wy / h.ky.step) * h.ky.step); htip(htxt(h)); dirty = true; return; }
+      let best = null; for (let i = 0; i < h.pts.length - 1; i++) { const A = h.pts[i], B = h.pts[i + 1]; if (!A || !B) continue; const dx = B[0] - A[0], dy = B[1] - A[1], L = dx * dx + dy * dy, f = L ? Math.max(0, Math.min(1, ((wx - A[0]) * dx + (wy - A[1]) * dy) / L)) : 0, d = Math.hypot(A[0] + f * dx - wx, A[1] + f * dy - wy); if (!best || d < best.d) best = { d, i, f }; }
+      if (!best) return; const vs = h.vals; let v = vs[best.i] + best.f * (vs[best.i + 1] - vs[best.i]); v = Math.round(v / h.kn.step) * h.kn.step; if (v !== h.kn.get()) h.kn.set(+v.toFixed(6)); htip(htxt(h)); dirty = true;
+    }
+    const setMode = v => { hmode = v; document.querySelectorAll('[data-hm]').forEach(x => { x.classList.toggle('on', x.dataset.hm === v); x.setAttribute('aria-pressed', x.dataset.hm === v); }); cv.classList.toggle('reshaping', v === 'reshape');
+      if (v === 'reshape') { wasPlaying = playing; setPlay(false); buildHandles(); htip('Reshape: drag a round handle along its dashed track. Drag the background to pan.', 3000); }
+      else { HD = []; if (wasPlying()) setPlay(true); htip('Turn: drag a moving part to turn it by hand, and flick it to spin.', 2600); } dirty = true; };
+    const wasPlying = () => wasPlaying;
+    document.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => setMode(b.dataset.hm));
+    if (document.body.classList.contains('gstatic')) setTimeout(() => setMode('reshape'), 300);   // nothing turns here, so dragging reshapes
     // pointers: one = pan, two = pinch-zoom + pan about the midpoint
     const ptrs = new Map(); let g = null, lastTap = 0;
     const rebase = () => {
@@ -270,6 +423,20 @@
       } else g = null;
     };
     cv.addEventListener('pointerdown', e => {
+      if (!ptrs.size && !gh && !hdrag && e.button <= 0 && hmode === 'reshape') {
+        const r = cv.getBoundingClientRect(), [wx, wy] = toWorld(e.clientX - r.left, e.clientY - r.top), h = hitHandle(wx, wy, e.pointerType === 'touch' ? 26 : 16);
+        if (h) { hdrag = { h, id: e.pointerId }; cv.classList.add('grabbing'); try { cv.setPointerCapture(e.pointerId); } catch (_) {} htip(htxt(h)); dirty = true; return; }
+      }
+      if (hdrag) return;
+      if (!ptrs.size && !gh && e.button <= 0 && hmode === 'turn') {
+        const r = cv.getBoundingClientRect(), [wx, wy] = toWorld(e.clientX - r.left, e.clientY - r.top), pk = grab(wx, wy, (e.pointerType === 'touch' ? 22 : 12) / view.s, false);
+        if (pk) {
+          gh = { ref: pk.ref, u: pk.u, id: e.pointerId, was: playing, hist: [[performance.now(), t]], P: pk.P };
+          if (hmode === 'reshape') { gh.k = startReshape(); if (!gh.k) { gh = null; htip('No setting changes this part. Try another part, or drag the background to pan.', 2200); } }
+          if (gh) { coast = 0; setPlay(false); cv.classList.add('grabbing'); try { cv.setPointerCapture(e.pointerId); } catch (_) {} if (hmode === 'reshape') reshapeTo(pk.P); dirty = true; return; }
+        }
+      }
+      if (gh) return;
       ptrs.set(e.pointerId, [e.clientX, e.clientY]); try { cv.setPointerCapture(e.pointerId); } catch (_) {}
       if (e.pointerType === 'touch' && ptrs.size === 1) { const n = Date.now(); if (n - lastTap < 320) { fit(); lastTap = 0; } else lastTap = n; }
       rebase();
@@ -280,6 +447,10 @@
         const under = lastParts.slice().reverse().find(p => p.name !== 'Path' && p.shapes.some(s => inPoly([wx, wy], s.outer) && !(s.holes || []).some(h => inPoly([wx, wy], h)) && !(s.circles || []).some(c => Math.hypot(wx - c.x, wy - c.y) < c.r)));
         xy.textContent = `x ${wx.toFixed(2)}  y ${wy.toFixed(2)} mm` + (under ? `  ·  ${under.name}` : '');
       }
+      if (gh && e.pointerId === gh.id) { gh.q = [wx, wy]; if (!gh.raf) gh.raf = requestAnimationFrame(() => { gh && (gh.raf = 0, gh.q && (hmode === 'turn' ? turnTo : reshapeTo)(gh.q)); }); return; }
+      if (hdrag && e.pointerId === hdrag.id) { dragHandle(wx, wy); return; }
+      if (hmode === 'reshape') { if (!ptrs.size && e.pointerType !== 'touch') { const h = hitHandle(wx, wy, 16); if (h !== hhov) { hhov = h; dirty = true; cv.classList.toggle('grabbable', !!h); if (h) htip(htxt(h)); else htip(null); } } }
+      else if (!ptrs.size && e.pointerType !== 'touch') { const now = performance.now(); if (now - hovT > 90) { hovT = now; const pk = grab(wx, wy, 12 / view.s, hmode === 'reshape', true); cv.classList.toggle('grabbable', !!pk); } }
       if (!ptrs.has(e.pointerId)) return;
       ptrs.set(e.pointerId, [e.clientX, e.clientY]);
       if (!g) return;
@@ -293,7 +464,13 @@
       }
       dirty = true;
     });
-    const up = e => { ptrs.delete(e.pointerId); rebase(); };
+    const up = e => {
+      if (hdrag && e.pointerId === hdrag.id) { hdrag = null; cv.classList.remove('grabbing'); setTimeout(() => htip(null), 1200); rebuildSoon(30); dirty = true; return; }
+      if (gh && e.pointerId === gh.id) {
+        const hs = gh.hist, a0 = hs[0], a1 = hs[hs.length - 1], dt = (a1[0] - a0[0]) / 1000, vel = hmode === 'turn' && dt > 0.01 && performance.now() - a1[0] < 80 ? (a1[1] - a0[1]) / dt : 0;
+        coast = Math.abs(vel) > 0.8 ? vel : 0; if (gh.was) setPlay(true); gh = null; cv.classList.remove('grabbing'); if (hmode === 'reshape') setTimeout(() => htip(null), 1500); dirty = true; return;
+      }
+      ptrs.delete(e.pointerId); rebase(); };
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('lostpointercapture', up);
     cv.addEventListener('dblclick', fit);
     document.getElementById('gfit').onclick = fit;
@@ -314,6 +491,7 @@
       else if (k === 'f') fit(); else if (k === '1') document.getElementById('g100').click();
       else if (k === 'g' || k === 'c' || k === 'l') { const key = { g: 'grid', c: 'guides', l: 'labels' }[k]; S[key] = S[key] ? 0 : 1; changed(); }
       else if (k === 'escape') { closePops(); helpBox.hidden = true; }
+      else if (k === 't' || k === 'r') { const b = document.querySelector(`[data-hm="${k === 't' ? 'turn' : 'reshape'}"]`); if (b) b.click(); }
     });
 
     /* ---------- drawing ---------- */
@@ -341,7 +519,7 @@
     function stroke(o) { ctx.lineWidth = (o.w || 1) / view.s; ctx.strokeStyle = o.color || css('--faint'); ctx.setLineDash((o.dash || []).map(v => v / view.s)); ctx.stroke(); ctx.setLineDash([]); }
     function grid() {
       const w = cv.clientWidth, h = cv.clientHeight, [x0, y1] = toWorld(0, 0), [x1, y0] = toWorld(w, h);
-      let step = 1; while (step * view.s < 8) step *= 10;
+      let step = 1; while (step * view.s < 8 && step < 1e6) step *= 10;
       [[step, css('--grid1')], [step * 10, css('--grid2')]].forEach(([st, col]) => {
         ctx.beginPath(); for (let x = Math.floor(x0 / st) * st; x <= x1; x += st) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); } for (let y = Math.floor(y0 / st) * st; y <= y1; y += st) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
         ctx.lineWidth = 1 / view.s; ctx.strokeStyle = col; ctx.stroke();
@@ -353,7 +531,7 @@
       const w = cv.clientWidth, h = cv.clientHeight, F = fills();
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = css('--canvas'); ctx.fillRect(0, 0, cv.width, cv.height);
       ctx.setTransform(dpr * view.s, 0, 0, -dpr * view.s, dpr * (w / 2 - view.x * view.s), dpr * (h / 2 + view.y * view.s));
-      let step = 1; while (step * view.s < 8) step *= 10;
+      let step = 1; while (step * view.s < 8 && step < 1e6) step *= 10;
       if (S.grid) grid();
       document.getElementById('gscale').textContent = `grid ${step} mm · zoom ${(view.s / (96 / 25.4) * 100).toFixed(0)}%`;
       const M = def.model(S, t), ink = css('--ink');
@@ -365,6 +543,8 @@
         shapePath(s); ctx.fillStyle = css('--hl'); ctx.fill('evenodd');
         ctx.save(); ctx.shadowColor = css('--red'); ctx.shadowBlur = 12 * dpr; ctx.lineWidth = 2.6 / view.s; ctx.strokeStyle = css('--red'); ctx.stroke(); ctx.restore();
       }); });
+      drawHandles();
+      if (gh && gh.P) { ctx.beginPath(); ctx.arc(gh.P[0], gh.P[1], 10 / view.s, 0, TAU); ctx.fillStyle = 'rgba(232,93,36,.25)'; ctx.fill(); ctx.lineWidth = 2 / view.s; ctx.strokeStyle = css('--red'); ctx.stroke(); }
       M.parts.forEach(p => (p.curves || []).forEach(c => d.path(c, { color: css('--red'), w: 1.2, dash: [5, 3] })));
       M.parts.forEach(p => {   // cut lines (slits) and closed cut-outs drawn as cuts; engraving in blue
         (p.cuts || []).forEach(c => { ctx.beginPath(); c.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); if (c.closed) { ctx.closePath(); ctx.fillStyle = css('--canvas'); ctx.fill(); } ctx.lineWidth = 1.1 / view.s; ctx.strokeStyle = ink; ctx.stroke(); });
@@ -378,6 +558,7 @@
     function tick(now) {
       const dt = Math.min((now - last) / 1000, 0.05); last = now;
       if (playing && S.rpm > 0) { t += dir * dt * S.rpm / 60 * Math.PI * 2; dirty = true; }
+      if (coast) { t += coast * dt; coast *= Math.exp(-dt * 1.6); if (Math.abs(coast) < 0.3) coast = 0; dirty = true; }
       if (dirty) { render(); dirty = false; }
       requestAnimationFrame(tick);
     }

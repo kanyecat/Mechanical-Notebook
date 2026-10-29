@@ -18,7 +18,7 @@
     return { size, pos, free, groove, s: T[0], ext, pliers: u < 0.6 };
   }
   MM.register({
-    slug: 'retaining-ring', view: { w: 700, h: 470 },
+    slug: 'retaining-ring', hands: false, view: { w: 700, h: 470 },
     params: [
       { key: 'type', label: 'Type', min: 0, max: 1, step: 1, value: 0, options: [[0, 'External (shaft)'], [1, 'Internal (bore)']] },
       { key: 'd', label: 'Shaft / bore Ø', unit: ' mm', min: 10, max: 40, step: 5, value: 20 }

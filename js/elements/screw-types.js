@@ -15,7 +15,7 @@
     if (kind === 4) { const pts = []; for (let k = 0; k < 72; k++) { const q = k / 72 * TAU, rr = r * (0.36 + 0.09 * Math.cos(6 * q)); pts.push([rr * Math.cos(q), rr * Math.sin(q)]); } P(pts); }
   }
   MM.register({
-    slug: 'screw-types', view: { w: 700, h: 470 },
+    slug: 'screw-types', hands: false, view: { w: 700, h: 470 },
     params: [
       { key: 'drive', label: 'Drive', min: 0, max: 4, step: 1, value: 4, options: DRIVES },
       { key: 'head', label: 'Head', min: 0, max: 3, step: 1, value: 0, options: [[0, 'Pan'], [1, 'Flat'], [2, 'Hex'], [3, 'Socket cap']] },

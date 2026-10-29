@@ -1,7 +1,7 @@
 (function () {
   const { TAU, COL } = MM, CX = 350, CY = 170, R = 110, PY = CY + R;
   MM.register({
-    slug: 'rack-pinion', view: { w: 700, h: 440 },
+    slug: 'rack-pinion', clicks: (a, p) => Math.floor(a * p.n / TAU), view: { w: 700, h: 440 },
     params: [{ key: 'n', label: 'Pinion teeth', min: 8, max: 24, step: 1, value: 14 }],
     draw(g, a, p) {
       const N = p.n, m = 2 * R / N, P = Math.PI * m, step = TAU / N;

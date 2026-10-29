@@ -1,7 +1,10 @@
 (function () {
   const { TAU, COL } = MM, CX = 350, CY = 330, RW = 150, RWM = 36, WY = CY - RW - RWM;
   MM.register({
-    slug: 'worm-gear', view: { w: 700, h: 520 },
+    slug: 'worm-gear', clicks: (a, p) => Math.floor(a * p.starts / TAU), view: { w: 700, h: 520 },
+    tryit: { keys: [{ key: 'n', label: 'Wheel teeth', at: p => { const t = (150 - 120 * (p.n - 12) / 36) * Math.PI / 180, R = RW + 40; return [CX + R * Math.cos(t), CY + R * Math.sin(t)]; } }], pose: 0.05, tasks: [
+        { text: 'Make a 40 : 1 reduction.', now: p => (p.n / p.starts).toFixed(1) + ' : 1', ok: p => p.n / p.starts === 40 },
+        { text: 'With a 2-start worm (set it below), make a 12 : 1 reduction.', now: p => p.starts + '-start, ' + (p.n / p.starts).toFixed(1) + ' : 1', ok: p => p.starts === 2 && p.n === 24 }] },
     params: [{ key: 'n', label: 'Wheel teeth', min: 12, max: 48, step: 1, value: 24 }, { key: 'starts', label: 'Worm starts', min: 1, max: 3, step: 1, value: 1 }],
     draw(g, a, p) {
       const N = p.n, s = p.starts, m = 2 * RW / N, P = Math.PI * m, step = TAU / N, c = g.c;

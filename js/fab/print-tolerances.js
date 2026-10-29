@@ -5,7 +5,7 @@
   const lap = p => 1 - off(p) / p.nz;                            // fraction of each line that still sits on the layer below
   const verdict = p => lap(p) >= 0.5 ? ['PRINTS FINE', 'at least half of each line sits on the layer below'] : lap(p) >= 0.25 ? ['ROUGH', 'the underside will sag and look rough'] : ['NEEDS SUPPORT', 'most of each line hangs in the air'];
   MM.register({
-    slug: 'print-tolerances', view: { w: 700, h: 440 }, thumb: 0.6,
+    slug: 'print-tolerances', hands: false, view: { w: 700, h: 440 }, thumb: 0.6,
     params: [
       { key: 'ang', label: 'Overhang angle from vertical', unit: ' °', min: 0, max: 80, step: 5, value: 40 },
       { key: 'nz', label: 'Nozzle', unit: ' mm', min: 0.2, max: 0.8, step: 0.2, value: 0.4 },

@@ -368,6 +368,7 @@
   };
 
   const DEF = {
+    knobs: S => G.listKnobs(S, 'spr', () => [['x', 'x', 'xy', -5000, 5000], ['y', 'y', 'xy', -5000, 5000], ['z', 'teeth', null, 9, 120]]),
     id: 'chains', title: 'Chain and sprocket generator', subtitle: 'Roller chain or plate chain, sprockets anywhere you like, several chains and shafts. Cut the sprockets and every chain part.',
     defaults: { spr: JSON.stringify(PRE.tens.P), chains: D0.chains, motor: 300, dir: 1, torque: 2, design: 'solid', pn: 5, web: 0, hub: 0, rim: 0, crn: 0, sweep: 35, key: 0, sth: 0, copies: 0, rollers: 1, grid: 1, guides: 1, labels: 1, rpm: 20 },
     panel(ui) {

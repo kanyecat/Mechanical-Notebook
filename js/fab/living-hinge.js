@@ -5,6 +5,9 @@
   const strain = p => { const th = p.ang * Math.PI / 180, len = p.w, rc = len / th; return p.t / 2 / rc * 100; };
   MM.register({
     slug: 'living-hinge', view: { w: 700, h: 440 }, thumb: 0.5,
+    tryit: { pose: 0.55, keys: [{ key: 'ang', label: 'Bend angle', at: p => { const th = p.ang * Math.PI / 180, sl = Math.max(12, p.w * 9), rc = sl / th, e = [330 + rc * Math.sin(th) - rc * Math.sin(th / 2), 240 - (rc * (1 - Math.cos(th)) - rc * (1 - Math.cos(th / 2)))]; return [e[0] + 170 * Math.cos(th), e[1] - 170 * Math.sin(th)]; } },
+        { key: 't', label: 'Thickness', at: MM.slide(400, 318, 540, 318, 't', 0.2, 2) }, { key: 'w', label: 'Strip length', at: MM.slide(110, 318, 280, 318, 'w', 1, 14) }], valid: p => strain(p) <= MAT[p.m][1], why: 'Red: the strip is strained past the starting limit for this material.', tasks: [
+        { text: 'Fold it all the way to 180° and stay under the strain limit.', now: p => p.ang + '°, strain ' + strain(p).toFixed(1) + '% of ' + MAT[p.m][1] + '%', ok: p => p.ang >= 180 && strain(p) <= MAT[p.m][1] }] },
     params: [
       { key: 't', label: 'Strip thickness', unit: ' mm', min: 0.2, max: 2, step: 0.1, value: 0.4 },
       { key: 'w', label: 'Strip length (across the bend)', unit: ' mm', min: 1, max: 14, step: 0.5, value: 8 },

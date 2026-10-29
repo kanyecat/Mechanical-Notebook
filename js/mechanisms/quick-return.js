@@ -10,6 +10,9 @@
   const forward = (a, R) => Math.sin(a) > -R / E;   // pin on the long (upper) arc: slow cutting stroke
   MM.register({
     slug: 'quick-return', view: { w: 680, h: 520 },
+    tryit: { keys: [{ key: 'r', label: 'Crank radius', at: p => geo(0.1 * TAU, p.r).P }], pose: 0.1, tasks: [
+        { text: 'Make the cutting stroke take twice as long as the return (a 2 : 1 time ratio).', now: p => (fwdShare(p.r) / (1 - fwdShare(p.r))).toFixed(2) + ' : 1', ok: p => Math.abs(fwdShare(p.r) / (1 - fwdShare(p.r)) - 2) < 0.06 },
+        { text: 'Make the strokes nearly even: under 1.3 : 1.', now: p => (fwdShare(p.r) / (1 - fwdShare(p.r))).toFixed(2) + ' : 1', ok: p => fwdShare(p.r) / (1 - fwdShare(p.r)) < 1.3 }] },
     params: [{ key: 'r', label: 'Crank radius', min: 40, max: 90, step: 1, value: 60 }],
     draw(g, a, p) {
       const R = p.r, s = geo(a, R), c = g.c, LL = H / Math.cos(Math.asin(R / E)) + 26, rx = O[0] + s.ram, ux = Math.sin(s.psi), uy = -Math.cos(s.psi);

@@ -4,7 +4,7 @@
   const CL = 0.3;                                                   // extra room round the nut, mm
   const cl = (x, a, b) => Math.max(a, Math.min(b, x));
   MM.register({
-    slug: 'captive-nut', view: { w: 700, h: 440 }, thumb: 0.45,
+    slug: 'captive-nut', hands: false, view: { w: 700, h: 440 }, thumb: 0.45,
     params: [{ key: 'd', label: 'Bolt size', min: 3, max: 8, step: 1, value: 4, options: [[3, 'M3'], [4, 'M4'], [5, 'M5'], [6, 'M6'], [8, 'M8']] }],
     draw(g, a, p) {
       const u = MM.cycle(a), [af, m, hole] = NUT[p.d], s = 9, u1 = cl(u * 2, 0, 1), u2 = cl(u * 2 - 1, 0, 1), cx = 250, y0 = 150;

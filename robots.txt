@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /test/
+Disallow: /supabase/
+
+Sitemap: https://mechanicalnotebook.com/sitemap.xml

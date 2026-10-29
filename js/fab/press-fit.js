@@ -10,7 +10,7 @@
     g.text(label, x, y - 16, { size: 10, color: COL.faint }); g.text('0', x, y + 30, { size: 10, color: COL.faint }); g.text(max + '%', x + w, y + 30, { size: 10, color: COL.faint, align: 'right' });
   }
   MM.register({
-    slug: 'press-fit', view: { w: 700, h: 440 }, thumb: 0.5,
+    slug: 'press-fit', hands: false, view: { w: 700, h: 440 }, thumb: 0.5,
     params: [
       { key: 'd', label: 'Pin diameter', unit: ' mm', min: 3, max: 12, step: 1, value: 6 },
       { key: 'i', label: 'Interference', unit: ' mm', min: -0.1, max: 0.4, step: 0.01, value: 0.1 },

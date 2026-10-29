@@ -280,6 +280,7 @@
   }
 
   G.create({
+    knobs: S => G.listKnobs(S, 'pul', () => [['x', 'x', 'xy', -5000, 5000], ['y', 'y', 'xy', -5000, 5000], ['d', 'diameter', null, 5, 2000]]),
     id: 'pulleys', title: 'Pulley generator', subtitle: 'Belt drives with pulleys anywhere you like, or lifting tackle. See speeds, belt length, grip and whether the load can be lifted.',
     defaults: { mode: 'belt', pul: JSON.stringify(PRE.idler.P), motor: 300, dir: 1, torque: 2, btype: 'flat', mu: 0.3, T0: 150, bore: 8, thick: 8,
       lines: 4, pull: 'down', load: 50, sd: 60, eta: 95, src: 'hand', hand: 250, wT: 10, wD: 50, swl: 2000, grid: 1, guides: 1, labels: 1, rpm: 20 },

@@ -4,6 +4,9 @@
   const pos = (a, t) => { const A = [O[0] + D * Math.cos(a), O[1]], B = [O[0], O[1] - D * Math.sin(a)]; return { A, B, P: [A[0] + t * (B[0] - A[0]), A[1] + t * (B[1] - A[1])] }; };
   MM.register({
     slug: 'trammel', view: { w: 660, h: 500 },
+    tryit: { keys: [{ key: 't', label: 'Pen along rod', at: p => pos(0.1 * TAU, p.t).P }], pose: 0.1, tasks: [
+        { text: 'Move the pen so it draws a circle.', now: p => (Math.max(Math.abs(1 - p.t), p.t) / Math.max(Math.min(Math.abs(1 - p.t), p.t), 1e-6)).toFixed(2) + ' : 1', ok: p => Math.abs(p.t - 0.5) < 0.011 },
+        { text: 'Draw an ellipse exactly four times as long as it is wide.', now: p => (Math.max(Math.abs(1 - p.t), p.t) / Math.max(Math.min(Math.abs(1 - p.t), p.t), 1e-6)).toFixed(2) + ' : 1', ok: p => Math.abs(Math.max(Math.abs(1 - p.t), p.t) / Math.max(Math.min(Math.abs(1 - p.t), p.t), 1e-6) - 4) < 0.03 }] },
     params: [{ key: 't', label: 'Pen along rod', min: 0.2, max: 1.8, step: 0.05, value: 1.5 }],
     draw(g, a, p) {
       const s = pos(a, p.t), ax = D * Math.abs(1 - p.t), by = D * p.t;

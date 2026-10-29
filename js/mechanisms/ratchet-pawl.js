@@ -13,7 +13,7 @@
   const surf = x => { const f = ((x % 1) + 1) % 1; return RT - (RT - RR) * f; };
   const P = (ang, r) => [CX + r * Math.cos(ang), CY - r * Math.sin(ang)];
   MM.register({
-    slug: 'ratchet-pawl', view: { w: 640, h: 500 },
+    slug: 'ratchet-pawl', clicks: a => { const s = state(a); return Math.floor(s.W + 1e-9) * 2 + (!s.fwd && s.l < 1 ? 1 : 0); }, clickSound: 'clack', view: { w: 640, h: 500 },
     draw(g, a) {
       const s = state(a), c = g.c;
       // wheel outline

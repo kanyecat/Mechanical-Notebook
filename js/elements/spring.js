@@ -7,6 +7,10 @@
   const defl = (t, p) => travel(p) * (1 - Math.cos(t)) / 2;
   MM.register({
     slug: 'spring', view: { w: 700, h: 480 },
+    tryit: { pose: 0.0, keys: [{ key: 'n', label: 'Active coils', at: MM.slide(60, 440, 60, 140, 'n', 3, 14) }, { key: 'D', label: 'Coil diameter', at: MM.slide(150, 470, 290, 470, 'D', 12, 40) }, { key: 'd', label: 'Wire', at: MM.slide(330, 470, 420, 470, 'd', 1, 4) }], tasks: [
+        { text: 'Make a spring with a rate between 4 and 5 N/mm.', now: p => MM.num(rate(p), 2) + ' N/mm', ok: p => rate(p) >= 4 && rate(p) <= 5 },
+        { text: 'Make a soft spring: under 0.5 N/mm.', now: p => MM.num(rate(p), 2) + ' N/mm', ok: p => rate(p) < 0.5 },
+        { text: 'Make a stiff spring: over 20 N/mm.', now: p => MM.num(rate(p), 1) + ' N/mm', ok: p => rate(p) > 20 }] },
     params: [
       { key: 'd', label: 'Wire diameter', unit: ' mm', min: 1, max: 4, step: 0.1, value: 2 },
       { key: 'D', label: 'Coil diameter', unit: ' mm', min: 12, max: 40, step: 1, value: 20 },

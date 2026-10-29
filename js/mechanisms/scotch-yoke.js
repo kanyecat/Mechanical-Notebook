@@ -2,6 +2,8 @@
   const { TAU, COL } = MM, CX = 190, CY = 240;
   MM.register({
     slug: 'scotch-yoke', view: { w: 700, h: 480 },
+    tryit: { keys: [{ key: 'r', label: 'Crank radius', at: p => [CX + p.r * Math.cos(0.1 * TAU), CY - p.r * Math.sin(0.1 * TAU)] }], pose: 0.1, tasks: [
+        { text: 'Make a stroke of 120 (the stroke is twice the crank radius).', now: p => 'stroke ' + 2 * p.r, ok: p => p.r === 60 }] },
     params: [{ key: 'r', label: 'Crank radius', min: 40, max: 100, step: 1, value: 80 }],
     draw(g, a, p) {
       const R = p.r, px = CX + R * Math.cos(a), py = CY - R * Math.sin(a), x = px;

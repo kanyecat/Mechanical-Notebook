@@ -7,7 +7,7 @@
     { ws: 0, wr: 1, wc: NR / (NS + NR), label: 'sun fixed · ring in · carrier out', big: (NR / (NS + NR)).toFixed(2) + '×', small: 'carrier speed ÷ ring speed' }
   ];
   MM.register({
-    slug: 'planetary-gears', view: { w: 560, h: 460 },
+    slug: 'planetary-gears', clicks: a => Math.floor(a * 12 / TAU), view: { w: 560, h: 460 },
     params: [{ key: 'mode', label: 'Fixed part', min: 0, max: 2, step: 1, value: 0, options: [[0, 'Ring'], [1, 'Carrier'], [2, 'Sun']] }],
     draw(g, a, p) {
       const c = g.c, md = MODES[p.mode | 0], ss = TAU / NS, sp = TAU / NP, sr = TAU / NR;

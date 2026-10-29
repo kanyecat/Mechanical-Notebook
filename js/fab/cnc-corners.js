@@ -1,7 +1,7 @@
 (function () {
   const { TAU, COL } = MM;
   MM.register({
-    slug: 'cnc-corners', view: { w: 700, h: 440 }, thumb: 0.9,
+    slug: 'cnc-corners', hands: false, view: { w: 700, h: 440 }, thumb: 0.9,
     params: [
       { key: 'd', label: 'Cutter diameter', unit: ' mm', min: 1.5, max: 10, step: 0.5, value: 6 },
       { key: 'st', label: 'Corner fix', min: 0, max: 2, step: 1, value: 0, options: [[0, 'None'], [1, 'Dog-bone'], [2, 'Round the part']] }

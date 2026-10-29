@@ -96,7 +96,7 @@
         const params = st.m.params || [], mt = meta[st.slug];
         return `<article class="box cmb-st" data-i="${i}">
           <div class="cmb-sh"><span class="cmb-n">${i + 1}</span>${selHTML(st.slug, i)}${stages.length > 1 ? `<button type="button" class="cmb-x" data-rm="${i}" aria-label="Remove stage ${i + 1}" title="Remove this stage">✕</button>` : ''}</div>
-          <canvas data-c="${i}" aria-label="Animated drawing of stage ${i + 1}, ${esc(mt.name)}"></canvas>
+          <div class="cmb-cv"><canvas data-c="${i}" aria-label="Animated drawing of stage ${i + 1}, ${esc(mt.name)}. Drag a moving part to turn the whole chain by hand."></canvas><div class="handtip" role="status" hidden></div></div>
           <div class="cmb-io" data-io="${i}"></div>
           ${params.length ? `<div class="adjust">${params.map(q => paramHTML(q, i, st.P)).join('')}</div>` : ''}
           <a class="cmb-more" href="pages/${st.slug}.html">How the ${esc(mt.name)} works →</a>
@@ -106,8 +106,11 @@
       addBox.innerHTML = stages.length < MAXSTAGES && lastPass
         ? `<label>Add a stage after stage ${stages.length}: <select id="cnew"><option value="">choose a mechanism…</option><optgroup label="Passes rotation on">${passSlugs.map(s => `<option value="${s}">${meta[s].name}</option>`).join('')}</optgroup><optgroup label="Ends the chain">${endSlugs.map(s => `<option value="${s}">${meta[s].name}</option>`).join('')}</optgroup></select></label>`
         : (lastPass ? `<span class="cmb-max">The chain is full (${MAXSTAGES} stages).</span>` : `<span class="cmb-max">This stage ends the chain. Change it to a gear or belt, or remove it, to add more.</span>`);
+      // hands on: grab a moving part in any stage and the whole chain turns with it
+      hands = stages.map((st, i) => { const cv = boxes.querySelector(`canvas[data-c="${i}"]`); return MM.hand ? MM.hand(cv, { m: st.m, map: th => angles(th)[i], period: TAU, params: [], getA: () => t, setA: v => { t = v; }, getP: () => st.P, playing: () => playing, setPlaying: v => { playing = v; $('cplay').textContent = playing ? 'Pause' : 'Play'; }, tip: cv.parentElement.querySelector('.handtip') }) : null; });
       save(); lastIO.length = 0; lastTot = ''; draw();
     }
+    let hands = [];
     const lastIO = []; let lastTot = '';
     function save() { try { history.replaceState(null, '', '#' + encodeURIComponent(JSON.stringify(stages.map(s => ({ s: s.slug, p: s.P }))))); } catch (e) { } }
     function load(list) { stages = list.slice(0, MAXSTAGES).map(x => make(x.s, x.p)); build(); }
@@ -187,6 +190,7 @@
     function tick(now) {
       const dt = Math.min((now - last) / 1000, 0.05); last = now;
       if (playing) t += dir * speed * dt * (TAU / 5);
+      hands.forEach(h => h && h.step(dt, t));
       draw(); requestAnimationFrame(tick);
     }
     window.addEventListener('resize', () => draw());

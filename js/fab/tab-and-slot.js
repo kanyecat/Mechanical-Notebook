@@ -4,7 +4,7 @@
   const fitOf = gap => FITS.find(f => gap < f[0]);
   const gapOf = p => p.slot + p.kerf;   // how much wider the cut slot is than the sheet
   MM.register({
-    slug: 'tab-and-slot', view: { w: 700, h: 440 }, thumb: 0.3,
+    slug: 'tab-and-slot', hands: false, view: { w: 700, h: 440 }, thumb: 0.3,
     params: [
       { key: 't', label: 'Sheet thickness', unit: ' mm', min: 3, max: 10, step: 0.5, value: 6 },
       { key: 'kerf', label: 'Laser kerf', unit: ' mm', min: 0, max: 0.4, step: 0.05, value: 0.2 },

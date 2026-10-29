@@ -439,6 +439,20 @@
         ui.num('bh', 'Slider height', { unit: 'mm', min: 2, max: 500, hl: p => p.name === 'Slider', show: S => S.kind === 'slider' });
       });
     },
+    // Reshape in the multi-link builder: every pivot position, crank and link length can be dragged on the drawing
+    knobs(S) {
+      if (S.kind !== 'multi') return [];
+      const NM = { x: 'x', y: 'y', r: 'crank length', l1: 'link length 1', l2: 'link length 2', u: 'point along', v: 'point across' };
+      const mk = (i, f, id, pair, min) => { const put = v => { const m = JSON.parse(S.mech); m[i][f] = v; S.mech = JSON.stringify(m); }; return { label: id + ' ' + NM[f], unit: 'mm', pair, step: 1, min, max: 5000, get: () => parseM(S)[i][f], raw: put, set: put }; };
+      const out = [];
+      parseM(S).forEach((e, i) => {
+        if (e.type === 'ground') out.push(mk(i, 'x', e.id, 'g' + i, -5000), mk(i, 'y', e.id, 'g' + i, -5000));
+        if (e.type === 'crank') out.push(mk(i, 'r', e.id, null, 1));
+        if (e.type === 'joint') out.push(mk(i, 'l1', e.id, null, 1), mk(i, 'l2', e.id, null, 1));
+        if (e.type === 'point') out.push(mk(i, 'u', e.id, 'p' + i, -5000), mk(i, 'v', e.id, 'p' + i, -5000));
+      });
+      return out;
+    },
     model(S, t) {
       if (S.kind === 'multi') return multiModel(S, t);
       const R = range(S), th = crankAt(S, t), s = solve(S, th) || solve(S, R.lo || 0);
