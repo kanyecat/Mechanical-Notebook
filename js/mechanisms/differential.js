@@ -13,7 +13,7 @@
     for (let i = 0; i < n; i++) { const ph = rot + i * TAU / n; if (Math.sin(ph) <= 0) continue; const xx = x - w / 2 * Math.cos(ph); g.line(xx, y - h / 2 + 1.5, xx, y + h / 2 - 1.5, { w: 1.2, color: MM.tint('ink', 0.35 + 0.5 * Math.sin(ph)) }); }
   }
   MM.register({
-    slug: 'differential', view: { w: 700, h: 430 }, thumb: 0.2,
+    slug: 'differential', three: true, view: { w: 700, h: 430 }, thumb: 0.2,
     params: [{ key: 'mode', label: 'Situation', min: 0, max: 3, step: 1, value: 2, options: [[0, 'Straight'], [1, 'Gentle turn'], [2, 'Tight turn'], [3, 'On ice']] }],
     draw(g, a, p) {
       const md = MODES[p.mode | 0], wl = md[0] * a, wr = md[1] * a, wc = a, spin = (md[1] - md[0]) / 2 * a * (16 / 10);

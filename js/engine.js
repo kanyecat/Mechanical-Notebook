@@ -1,6 +1,7 @@
 /* Mechanisms engine: drawing helpers, animation loop, graph, page mounting */
 (function () {
   const TAU = Math.PI * 2;
+  const ENGINE_SRC = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || (typeof location !== 'undefined' ? location.href : '');   // to find js/m3d.js next to this file
   /* Drawing colours for each theme. ink = lines, red = accent, white = part fill, paper = background (used for cut-outs). */
   const PALETTES = {
     blueprint: { ink: '#eef5ff', red: '#ffd166', paper: '#1b4b82', white: '#1f5590', faint: 'rgba(238,245,255,.55)', hatch: 'rgba(238,245,255,.32)', blue: '#8fd3ff' },
@@ -277,6 +278,8 @@
     <nav class="onpage" aria-label="On this page"></nav>
     <div class="stage">
       <section class="box drawing">
+        ${m.three ? '<div class="v3tabs" role="tablist" aria-label="View"><button type="button" role="tab" data-v3="2d" aria-selected="true">Drawing</button><button type="button" role="tab" data-v3="3d" aria-selected="false">3D model</button></div>' : ''}
+        ${m.three ? '<div class="v3" hidden><p class="v3msg">Loading the 3D model…</p><p class="v3hint">Drag to turn the view · scroll or pinch to zoom · right-drag to move · double-click to reset</p></div>' : ''}
         <canvas id="main" aria-label="Animated drawing of the ${meta.name}${m.hands === false ? '' : '. Drag a moving part to turn it by hand, or use the arrow keys.'}"></canvas>
         ${m.hands === false ? '' : `<div class="handtip" role="status" hidden></div>
         <p class="handhint"><b>Hands on:</b> drag the part marked with the arrow, or any moving part, to turn it by hand, and flick it to spin<span class="hh-mouse">. Drag sideways on empty space to step through the motion</span>.</p>`}
@@ -364,7 +367,15 @@
     const lh = document.getElementById('learn');
     if (lh && MM.learn) learn = MM.learn(lh, slug, { m, P, setParam: (k, v) => setParam(k, v, 'learn'), getAngle: () => a });
     document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); setPlaying(!playing); } });
+    // 3D model tab: three.js and the model code load the first time it is opened
+    let v3 = null, v3on = false;
+    root.querySelectorAll('[data-v3]').forEach(b => b.onclick = () => {
+      v3on = b.dataset.v3 === '3d'; root.querySelectorAll('[data-v3]').forEach(x => x.setAttribute('aria-selected', x === b));
+      const box = root.querySelector('.v3'); box.hidden = !v3on; cv.hidden = v3on; const hh0 = root.querySelector('.handhint'); if (hh0) hh0.hidden = v3on;
+      if (v3on && !v3) { v3 = 'loading'; import(new URL('m3d.js', ENGINE_SRC).href).then(mod => { v3 = mod.view(box, slug); box.querySelector('.v3msg').hidden = true; }).catch(err => { v3 = null; box.querySelector('.v3msg').textContent = 'The 3D model could not load. It needs an internet connection the first time, to fetch three.js.'; console.error(err); }); }
+    });
     function render() {
+      if (v3on && v3 && v3 !== 'loading') v3.update(a, P);
       MM.frame(cv, m, a, P); if (gc) MM.graphFrame(gc, m, a, P);
       // Right after a tap on a link the page text is left alone: phone browsers (iPhone Safari especially) treat a page that
       // changes under the finger as a "hover" and drop the tap, so links would only highlight and not open. Canvases keep moving.

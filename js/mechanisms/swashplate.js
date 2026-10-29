@@ -3,7 +3,7 @@
   // piston i sits at angle phi round the shaft; the plate face reaches it at x = X0 − R tan α cos(phi − θ)
   const px = (i, n, th, al) => X0 - R * Math.tan(al) * Math.cos(i * TAU / n - th);
   MM.register({
-    slug: 'swashplate', view: { w: 700, h: 450 }, thumb: 0.1,
+    slug: 'swashplate', three: true, view: { w: 700, h: 450 }, thumb: 0.1,
     params: [{ key: 'al', label: 'Plate tilt α', unit: '°', min: 0, max: 20, step: 1, value: 15 }, { key: 'n', label: 'Pistons', min: 5, max: 9, step: 2, value: 7, options: [[5, '5'], [7, '7'], [9, '9']] }],
     draw(g, a, p) {
       const al = p.al * D2R, n = p.n | 0, th = a;

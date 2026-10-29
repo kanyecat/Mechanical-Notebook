@@ -2,7 +2,7 @@
   const { TAU, COL } = MM, CY = 225, X0 = 200, R = 95, RP = 125, D2R = Math.PI / 180;
   const px = (ph, th, al) => X0 - R * Math.tan(al) * Math.cos(ph - th);   // where the plate meets the piston at angle ph round the shaft
   MM.register({
-    slug: 'wobble-plate', hands: false, view: { w: 700, h: 450 }, thumb: 0.15,
+    slug: 'wobble-plate', three: true, hands: false, view: { w: 700, h: 450 }, thumb: 0.15,
     params: [{ key: 'al', label: 'Hub tilt α', unit: '°', min: 4, max: 20, step: 1, value: 14 },
       { key: 'mode', label: 'The plate', min: 0, max: 1, step: 1, value: 0, options: [[0, 'Wobbles, held from turning'], [1, 'Turns with the shaft (swashplate)']] }],
     draw(g, a, p) {

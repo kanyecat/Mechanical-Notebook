@@ -24,7 +24,7 @@
     g.line(jx - ux * 26 - nx * s, jy - uy * 26 - ny * s, jx - ux * 26 + nx * s, jy - uy * 26 + ny * s, { w: 3 });
   }
   MM.register({
-    slug: 'double-hookes-joint', view: { w: 720, h: 460 },
+    slug: 'double-hookes-joint', three: true, view: { w: 720, h: 460 },
     params: [{ key: 'beta', label: 'Joint angle', unit: '°', min: 0, max: 45, step: 1, value: 30 }, { key: 'phase', label: 'Yokes', min: 0, max: 1, step: 1, value: 1, options: [[1, 'In line'], [0, 'At 90°']] }],
     draw(g, a, p) {
       const s = angles(a, p), J2 = [J1[0] + LM * Math.cos(s.b), J1[1] - LM * Math.sin(s.b)], ux = Math.cos(s.b), uy = -Math.sin(s.b);

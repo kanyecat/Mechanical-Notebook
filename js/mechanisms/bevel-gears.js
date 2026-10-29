@@ -26,7 +26,7 @@
     return { top, bot };
   }
   MM.register({
-    slug: 'bevel-gears', clicks: a => Math.floor(a * 12 / TAU), view: { w: 700, h: 470 }, thumb: 0.08,
+    slug: 'bevel-gears', three: true, clicks: a => Math.floor(a * 12 / TAU), view: { w: 700, h: 470 }, thumb: 0.08,
     tryit: { keys: [{ key: 'z1', label: 'Pinion teeth', at: MM.dial(120, 380, 70, 200, 340, 'z1', 10, 30) }, { key: 'z2', label: 'Gear teeth', at: MM.dial(590, 400, 70, 200, 340, 'z2', 12, 48) }], pose: 0.05, tasks: [
         { text: 'Make a 3 : 1 reduction round the corner.', now: p => (p.z2 / p.z1).toFixed(2) + ' : 1', ok: p => p.z2 === 3 * p.z1 },
         { text: 'Make a mitre pair: same teeth, same speed.', now: p => (p.z2 / p.z1).toFixed(2) + ' : 1', ok: p => p.z1 === p.z2 }] },
